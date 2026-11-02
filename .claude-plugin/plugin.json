@@ -1,0 +1,23 @@
+{
+  "name": "deckforge-executive-slide-decks",
+  "version": "1.0.0",
+  "description": "Turn meeting notes, written memos, spreadsheet tables, and quarterly business metrics into structured 6-slide presentations, 16:9 visual previews, and editable PowerPoint (.pptx) decks.",
+  "author": {
+    "name": "Kader Mula",
+    "email": "mulak1@gmail.com",
+    "url": "https://deckforge-mcp-production.up.railway.app"
+  },
+  "homepage": "https://deckforge-mcp-production.up.railway.app",
+  "license": "MIT",
+  "keywords": [
+    "presentations",
+    "slides",
+    "powerpoint",
+    "pptx",
+    "board-deck",
+    "qbr",
+    "executive-briefing",
+    "charts",
+    "productivity"
+  ]
+}

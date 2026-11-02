@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "deckforge": {
+      "type": "http",
+      "url": "https://deckforge-mcp-production.up.railway.app/mcp"
+    }
+  }
+}

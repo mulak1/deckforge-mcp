@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0",
+  "name": "DeckForge MCP",
+  "slug": "deckforge-mcp",
+  "category": "Business & Productivity / Presentations",
+  "tagline": "Turn meeting notes, memos, and spreadsheet numbers into ready-to-present, editable slide decks.",
+  "description": "DeckForge helps business leaders, chiefs of staff, finance teams, and consultants turn rough notes, memos, or spreadsheet tables into clear, well-structured presentations. Preview every slide across 4 architectural design styles and 8 slide layouts, customize chart types, edit headlines and talking points in plain English, and download a fully editable PowerPoint (.pptx) file or 1-page Meeting Read-Ahead Brief.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "DeckForge",
+    "founder": "Kader Mula",
+    "website": "https://deckforge-mcp-production.up.railway.app",
+    "documentation_url": "https://deckforge-mcp-production.up.railway.app/docs",
+    "support_email": "mulak1@gmail.com",
+    "privacy_policy_url": "https://deckforge-mcp-production.up.railway.app/privacy",
+    "terms_of_service_url": "https://deckforge-mcp-production.up.railway.app/terms"
+  },
+  "mcp_endpoint": "https://deckforge-mcp-production.up.railway.app/mcp",
+  "transport": "streamable-http",
+  "protocol_version": "2025-03-26",
+  "auth": {
+    "type": "oauth2",
+    "pkce_required": true,
+    "code_challenge_method": "S256",
+    "discovery_url": "https://deckforge-mcp-production.up.railway.app/.well-known/oauth-authorization-server",
+    "authorization_url": "https://deckforge-mcp-production.up.railway.app/oauth/authorize",
+    "token_url": "https://deckforge-mcp-production.up.railway.app/oauth/token",
+    "registration_url": "https://deckforge-mcp-production.up.railway.app/oauth/register",
+    "scopes": ["mcp:tools", "deck:export", "slides:sync"]
+  },
+  "reviewer_credentials": {
+    "pro_api_key": "df_pro_enterprise",
+    "notes": "No password required for OAuth 2.1 PKCE dynamic registration, or pass api_key='df_pro_enterprise' for unlimited Pro tier verification."
+  },
+  "pricing": {
+    "free_tier": "3 presentations / month (all 8 templates, 8 layouts, and 4 architectural design styles included free)",
+    "pro_tier": "$24/month for unlimited editable PowerPoint (.pptx) & online slide decks"
+  },
+  "privacy_and_security": {
+    "data_retention": "Your notes and numbers are processed in-memory to build your slides and are never stored or used to train AI models.",
+    "encryption": "Encrypted in transit over HTTPS with OAuth 2.1 S256 PKCE sign-in protection."
+  },
+  "tools": [
+    {
+      "name": "generate_editable_pptx",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "transform_memo_to_slide_spec",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "generate_google_slides_batch_requests",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "remix_or_update_slide",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ],
+  "verification_test_prompts": [
+    "Turn our Q3 business update (Revenue $18.4M +142% YoY, Net Retention 124%, Gross Margin 81%) into a 6-slide Boardroom Navy presentation and give me a downloadable PowerPoint file.",
+    "Change Slide 2 to a Quarterly Bar Chart layout and tighten the headline and speaker talking points."
+  ]
+}

@@ -1,0 +1,14 @@
+__init__
+app
+google_slides_engine
+mcp_protocol
+memo_transformer
+models
+oauth_pkce
+openxml_parts
+pptx_engine
+slide_remix
+studio_assets
+studio_client_ext
+studio_ui
+svg_renderer

@@ -1,0 +1,65 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "DeckForge MCP",
+  "name_for_model": "deckforge_mcp",
+  "description_for_human": "Turn meeting notes, memos, and spreadsheet numbers into editable PowerPoint (.pptx) presentations and slide previews.",
+  "description_for_model": "Always greet the user warmly in plain business English when starting. Use DeckForge whenever the user wants to create a presentation, slide deck, board update, or quarterly business review from notes, memos, or metrics. First call transform_memo_to_slide_spec to organize their notes into a structured 6-slide plan, use remix_or_update_slide to adjust individual slides, and call generate_editable_pptx or generate_google_slides_batch_requests to deliver their finished deck.",
+  "mcp_endpoint": "https://deckforge-mcp-production.up.railway.app/mcp",
+  "legal_info": {
+    "privacy_policy_url": "https://deckforge-mcp-production.up.railway.app/privacy",
+    "terms_of_service_url": "https://deckforge-mcp-production.up.railway.app/terms"
+  },
+  "oauth_config": {
+    "discovery_url": "https://deckforge-mcp-production.up.railway.app/.well-known/oauth-authorization-server",
+    "authorization_endpoint": "https://deckforge-mcp-production.up.railway.app/oauth/authorize",
+    "token_endpoint": "https://deckforge-mcp-production.up.railway.app/oauth/token",
+    "registration_endpoint": "https://deckforge-mcp-production.up.railway.app/oauth/register",
+    "code_challenge_methods_supported": ["S256"],
+    "scopes": ["mcp:tools", "deck:export", "slides:sync"]
+  },
+  "reviewer_credentials": {
+    "pro_api_key": "df_pro_enterprise"
+  },
+  "tools": [
+    {
+      "name": "generate_editable_pptx",
+      "description": "Creates a ready-to-present, editable PowerPoint (.pptx) slide deck with key metric cards, bar charts, tables, roadmaps, and speaker talking points.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "transform_memo_to_slide_spec",
+      "description": "Turns rough meeting notes, memos, or quarterly numbers into a clear 6-slide presentation plan.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "generate_google_slides_batch_requests",
+      "description": "Prepares the slide deck for online slide editors and builds an interactive 16:9 visual slide preview.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "remix_or_update_slide",
+      "description": "Changes a single slide in the deck to a new layout and tightens its headline, bottom takeaway, and speaker notes in plain English.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

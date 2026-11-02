@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "name": "DeckForge MCP",
+  "slug": "deckforge-mcp",
+  "category": "Business & Productivity / Presentations",
+  "tagline": "Turn meeting notes, memos, and business numbers into ready-to-present, editable slide decks.",
+  "description": "DeckForge helps business leaders, chiefs of staff, finance teams, and consultants turn rough notes or quarterly numbers into clear, well-structured 6-slide presentations. Preview every slide, edit headlines and talking points in plain English, and download a fully editable PowerPoint (.pptx) file or 1-page Meeting Read-Ahead Brief.",
+  "version": "1.0.0",
+  "mcp_endpoint": "http://localhost:8793/mcp",
+  "transport": "streamable-http",
+  "protocol_version": "2025-03-26",
+  "auth": {
+    "type": "oauth2",
+    "pkce_required": true,
+    "code_challenge_method": "S256",
+    "discovery_url": "http://localhost:8793/.well-known/oauth-authorization-server",
+    "authorization_url": "http://localhost:8793/oauth/authorize",
+    "token_url": "http://localhost:8793/oauth/token",
+    "registration_url": "http://localhost:8793/oauth/register",
+    "scopes": ["mcp:tools", "deck:export", "slides:sync"]
+  },
+  "pricing": {
+    "free_tier": "3 presentations / month",
+    "pro_tier": "$24/month for unlimited editable PowerPoint (.pptx) & online slide decks"
+  },
+  "privacy_and_security": {
+    "data_retention": "Your notes and numbers are processed in-memory to build your slides and are never stored or used to train AI models.",
+    "encryption": "Encrypted in transit with secure sign-in protection."
+  },
+  "tools": [
+    {
+      "name": "generate_editable_pptx",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "transform_memo_to_slide_spec",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "generate_google_slides_batch_requests",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "remix_or_update_slide",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ],
+  "verification_test_prompts": [
+    "Turn our Q3 business update (Revenue $18.4M +142% YoY, Net Retention 124%, Gross Margin 81%) into a 6-slide Boardroom Navy presentation and give me a downloadable PowerPoint file.",
+    "Change Slide 2 to a Quarterly Bar Chart layout and tighten the headline and speaker talking points."
+  ]
+}
