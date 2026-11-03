@@ -33,24 +33,54 @@ STUDIO_RESOURCE_URI = "ui://deckforge/studio"
 UI_META = {"ui": {"resourceUri": STUDIO_RESOURCE_URI}}
 
 
-def _ensure_schema_descriptions(node: Any, prop_name: str = "") -> Any:
-    """Recursively guarantees every property and nested $defs field has a plain-English description."""
+def _ensure_schema_descriptions(
+    node: Any, prop_name: str = "", defs: Dict[str, Any] | None = None
+) -> Any:
+    """Recursively guarantees every property has an explicit JSON Schema 'type' and plain-English 'description'."""
     if not isinstance(node, dict):
         return node
     out = dict(node)
+    root_defs = defs if defs is not None else out.get("$defs", {})
+
+    # 1. Flatten Pydantic Optional anyOf: [{"type": "string", ...}, {"type": "null"}] -> {"type": "string", ...}
+    if "anyOf" in out and isinstance(out["anyOf"], list):
+        non_null = [branch for branch in out["anyOf"] if isinstance(branch, dict) and branch.get("type") != "null"]
+        if non_null:
+            primary = dict(non_null[0])
+            out.pop("anyOf", None)
+            if out.get("default") is None:
+                out.pop("default", None)
+            saved_desc = out.get("description")
+            out = {**primary, **out}
+            if saved_desc:
+                out["description"] = saved_desc
+
+    # 2. Resolve top-level or nested $ref so every property has an explicit "type"
+    if "$ref" in out and isinstance(out["$ref"], str):
+        ref_key = out.pop("$ref").split("/")[-1]
+        ref_target = dict(root_defs.get(ref_key, {}))
+        saved_desc = out.get("description")
+        out = {**ref_target, **out}
+        if saved_desc:
+            out["description"] = saved_desc
+        if "type" not in out:
+            out["type"] = "object"
+
+    if prop_name and "type" not in out:
+        out["type"] = "object" if "properties" in out else "string"
+
     if prop_name and "description" not in out:
         readable = prop_name.replace("_", " ").strip().capitalize()
         out["description"] = f"{readable} parameter for the presentation slide deck."
+
     if "properties" in out and isinstance(out["properties"], dict):
         out["properties"] = {
-            k: _ensure_schema_descriptions(v, prop_name=k)
+            k: _ensure_schema_descriptions(v, prop_name=k, defs=root_defs)
             for k, v in out["properties"].items()
         }
-    if "$defs" in out and isinstance(out["$defs"], dict):
-        out["$defs"] = {
-            k: _ensure_schema_descriptions(v, prop_name="")
-            for k, v in out["$defs"].items()
-        }
+    if "items" in out and isinstance(out["items"], dict):
+        out["items"] = _ensure_schema_descriptions(out["items"], prop_name=prop_name or "item", defs=root_defs)
+    out.pop("$defs", None)
     return out
 
 
