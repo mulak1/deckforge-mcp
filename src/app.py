@@ -44,14 +44,23 @@ from src.models import (
 )
 from src.oauth_pkce import OAuthAndQuotaStore
 from src.pptx_engine import build_pptx_bytes, generate_editable_pptx
-from src.public_pages import render_about_html, render_docs_html, render_privacy_html, render_terms_html
+from src.public_pages import (
+    DECKFORGE_FAVICON_SVG,
+    render_about_html,
+    render_docs_html,
+    render_privacy_html,
+    render_terms_html,
+)
 from src.studio_ui import render_studio_html
 from src.templates_and_import import import_tabular_data_to_slide
 
 PORT = 8793
 ROOT_DIR = Path(__file__).resolve().parent.parent
 _OPENAI_CHALLENGE_STATE: dict[str, str] = {
-    "token": os.environ.get("OPENAI_APPS_CHALLENGE", "").strip()
+    "token": os.environ.get(
+        "OPENAI_APPS_CHALLENGE",
+        "WCjMPRQErs6vhNqMtbCP6eRJZFwPdr2jDO8qY4ogHMQ",
+    ).strip()
 }
 
 
@@ -120,6 +129,20 @@ def create_app() -> FastAPI:
     @app.get("/terms", response_class=HTMLResponse)
     async def terms_of_service() -> HTMLResponse:
         return HTMLResponse(content=render_terms_html(), status_code=200)
+
+    @app.get("/favicon.svg")
+    async def get_favicon_svg() -> Response:
+        return Response(content=DECKFORGE_FAVICON_SVG, media_type="image/svg+xml")
+
+    @app.get("/favicon.ico")
+    async def get_favicon_ico() -> Response:
+        ico = ROOT_DIR / "openai_plugin_package" / "assets" / "favicon.ico"
+        return Response(content=ico.read_bytes(), media_type="image/x-icon") if ico.exists() else Response(content=DECKFORGE_FAVICON_SVG, media_type="image/svg+xml")
+
+    @app.get("/icon.png")
+    @app.get("/apple-touch-icon.png")
+    async def get_icon_png() -> Response:
+        return Response(content=(ROOT_DIR / "openai_plugin_package" / "assets" / "icon.png").read_bytes(), media_type="image/png")
 
     @app.get("/api/greeting")
     async def api_greeting() -> Dict[str, Any]:

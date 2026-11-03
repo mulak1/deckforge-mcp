@@ -5,6 +5,18 @@ Designed for End Users, IT Administrators, and Anthropic Claude / OpenAI MCP Dir
 
 from __future__ import annotations
 
+DECKFORGE_FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">'
+    '<rect width="48" height="48" rx="12" fill="#0F172A" stroke="#0284C7" stroke-width="2"/>'
+    '<rect x="8.5" y="12.5" width="23" height="16.5" rx="3" fill="#4F46E5"/>'
+    '<rect x="13" y="17.5" width="25.5" height="17.5" rx="3.5" fill="#0284C7" stroke="#E0F2FE" stroke-width="1.2"/>'
+    '<rect x="17.5" y="27.5" width="4" height="4.5" rx="0.8" fill="#0F172A"/>'
+    '<rect x="23.5" y="24" width="4" height="8" rx="0.8" fill="#0F172A"/>'
+    '<rect x="29.5" y="20.5" width="4" height="11.5" rx="0.8" fill="#FFFFFF"/>'
+    '<path d="M36.5 7.5L38 12L42.5 13.5L38 15L36.5 19.5L35 15L30.5 13.5L35 12Z" fill="#F59E0B"/>'
+    "</svg>"
+)
+
 PUBLIC_PAGE_STYLE = """
   body { font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#070b14; color:#f8fafc; margin:0; padding:2.5rem 1.25rem; line-height:1.65; font-size:15.5px; }
   main { max-width:840px; margin:0 auto; background:#0f172a; border:1px solid #334155; border-radius:16px; padding:2.5rem; }
@@ -37,6 +49,8 @@ def render_docs_html() -> str:
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" href="/icon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>User &amp; IT Admin Documentation — DeckForge: Executive Slide Decks</title>
   <style>{PUBLIC_PAGE_STYLE}</style>
@@ -115,6 +129,8 @@ def render_about_html() -> str:
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" href="/icon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>About DeckForge — Executive Presentation &amp; Slide Deck Studio</title>
   <style>{PUBLIC_PAGE_STYLE}</style>
@@ -154,6 +170,8 @@ def render_privacy_html() -> str:
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" href="/icon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Privacy &amp; Confidentiality Policy — DeckForge</title>
   <style>{PUBLIC_PAGE_STYLE}</style>
@@ -180,6 +198,8 @@ def render_terms_html() -> str:
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" href="/icon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Terms of Service — DeckForge</title>
   <style>{PUBLIC_PAGE_STYLE}</style>
