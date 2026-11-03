@@ -74,15 +74,15 @@ def get_mcp_tools_catalog() -> List[Dict[str, Any]]:
     return [
         {
             "name": "generate_editable_pptx",
-            "title": "Build Editable PowerPoint (.pptx) Presentation",
+            "title": "Format Editable PowerPoint (.pptx) Presentation",
             "description": (
-                "Creates a ready-to-present, fully editable PowerPoint (.pptx) slide deck complete with "
-                "headline takeaways, 4-card key number grids, comparison charts, financial tables, "
-                "90-day roadmaps, and speaker talking points."
+                "Statelessly formats and returns a ready-to-present PowerPoint (.pptx) presentation "
+                "in memory with headline takeaways, 4-card key number grids, comparison charts, "
+                "financial tables, 90-day roadmaps, and speaker talking points without modifying external state."
             ),
             "inputSchema": _ensure_schema_descriptions(GeneratePptxRequest.model_json_schema()),
             "annotations": {
-                "title": "Build Editable PowerPoint (.pptx)",
+                "title": "Format Editable PowerPoint (.pptx)",
                 "readOnlyHint": True,
                 "destructiveHint": False,
                 "idempotentHint": True,
@@ -92,15 +92,15 @@ def get_mcp_tools_catalog() -> List[Dict[str, Any]]:
         },
         {
             "name": "transform_memo_to_slide_spec",
-            "title": "Turn Notes or Memo into a Structured Slide Deck",
+            "title": "Analyze Notes or Memo into a Structured Slide Plan",
             "description": (
-                "Turns rough meeting notes, quarterly numbers, or a written memo into a clear "
-                "6-slide presentation plan with strong headlines, key metric cards, comparison charts, "
-                "summary tables, and speaker talking points."
+                "Statelessly analyzes meeting notes, quarterly numbers, or a written memo in memory and "
+                "returns a structured 6-slide presentation plan with strong headlines, key metric cards, "
+                "comparison charts, summary tables, and speaker talking points."
             ),
             "inputSchema": _ensure_schema_descriptions(MemoTransformRequest.model_json_schema()),
             "annotations": {
-                "title": "Turn Notes into Slide Deck",
+                "title": "Analyze Notes into Slide Plan",
                 "readOnlyHint": True,
                 "destructiveHint": False,
                 "idempotentHint": True,
@@ -110,14 +110,14 @@ def get_mcp_tools_catalog() -> List[Dict[str, Any]]:
         },
         {
             "name": "generate_google_slides_batch_requests",
-            "title": "Prepare Online Slides Export & Interactive Preview",
+            "title": "Render 16:9 Slide Previews & Layout Elements",
             "description": (
-                "Prepares your presentation for online slide tools and builds a crisp, "
-                "interactive 16:9 visual preview of every slide in the deck."
+                "Statelessly computes 16:9 interactive SVG slide previews and layout structure "
+                "for every slide in the presentation without modifying any external files."
             ),
             "inputSchema": _ensure_schema_descriptions(GoogleSlidesExportRequest.model_json_schema()),
             "annotations": {
-                "title": "Prepare Online Slides & Visual Preview",
+                "title": "Render 16:9 Slide Previews",
                 "readOnlyHint": True,
                 "destructiveHint": False,
                 "idempotentHint": True,
@@ -127,15 +127,15 @@ def get_mcp_tools_catalog() -> List[Dict[str, Any]]:
         },
         {
             "name": "remix_or_update_slide",
-            "title": "Change Slide Layout or Tighten Slide Wording",
+            "title": "Compute Alternate Slide Layout & Polished Wording",
             "description": (
-                "Changes a single slide to a different layout (such as Key Numbers Grid, "
+                "Statelessly computes an alternate layout for a single slide in memory (such as Key Numbers Grid, "
                 "Quarterly Bar Chart, Side-by-Side Comparison, Financial Table, or 90-Day Roadmap) "
-                "and sharpens its headline, bottom takeaway, and speaker notes in plain business English."
+                "and returns sharpened headline, bottom takeaway, and speaker notes in plain business English."
             ),
             "inputSchema": _ensure_schema_descriptions(SlideRemixRequest.model_json_schema()),
             "annotations": {
-                "title": "Change Layout or Polish Slide Wording",
+                "title": "Compute Alternate Layout & Wording",
                 "readOnlyHint": True,
                 "destructiveHint": False,
                 "idempotentHint": True,
