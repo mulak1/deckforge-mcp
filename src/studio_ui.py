@@ -71,6 +71,7 @@ def render_studio_html() -> str:
       <nav style="display:flex;gap:12px;align-items:center;font-size:12px;margin-right:4px;">
         <a href="/about" style="color:var(--accent);text-decoration:none;font-weight:700;">About</a>
         <a href="/docs" style="color:var(--accent);text-decoration:none;font-weight:700;">Documentation</a>
+        <a href="/analytics" style="color:var(--accent);text-decoration:none;font-weight:700;">Analytics</a>
         <a href="/privacy" style="color:var(--muted);text-decoration:none;font-weight:600;">Privacy Policy</a>
         <a href="/terms" style="color:var(--muted);text-decoration:none;font-weight:600;">Terms</a>
       </nav>

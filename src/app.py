@@ -16,6 +16,13 @@ from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 import uvicorn
 
+from src.analytics import (
+    detect_source,
+    get_analytics_snapshot,
+    get_chatgpt_openapi_spec,
+    record_event,
+    render_analytics_html,
+)
 from src.google_slides_engine import generate_google_slides_batch_requests
 from src.mcp_protocol import MCP_PROTOCOL_VERSION, get_mcp_tools_catalog, handle_mcp_jsonrpc
 from src.memo_transformer import (
@@ -56,8 +63,22 @@ def create_app() -> FastAPI:
     store = OAuthAndQuotaStore(base_url=f"http://localhost:{PORT}")
 
     @app.get("/", response_class=HTMLResponse)
-    async def index_studio() -> HTMLResponse:
+    async def index_studio(request: Request) -> HTMLResponse:
+        src = detect_source(request.headers.get("user-agent", ""), path="/")
+        record_event(event_type="page_view", source=src, tool_name="studio", detail="GET /")
         return HTMLResponse(content=render_studio_html(), status_code=200)
+
+    @app.get("/analytics", response_class=HTMLResponse)
+    async def analytics_page() -> HTMLResponse:
+        return HTMLResponse(content=render_analytics_html(), status_code=200)
+
+    @app.get("/api/analytics")
+    async def api_analytics() -> Dict[str, Any]:
+        return get_analytics_snapshot()
+
+    @app.get("/chatgpt-openapi.json")
+    async def chatgpt_openapi() -> Dict[str, Any]:
+        return get_chatgpt_openapi_spec()
 
     @app.get("/docs", response_class=HTMLResponse)
     @app.get("/documentation", response_class=HTMLResponse)
@@ -203,7 +224,7 @@ def create_app() -> FastAPI:
                 content={"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}},
                 status_code=400,
             )
-        response_data = handle_mcp_jsonrpc(payload, store)
+        response_data = handle_mcp_jsonrpc(payload, store, user_agent=request.headers.get("user-agent", ""))
         return JSONResponse(content=response_data, status_code=200)
 
     # --- Studio REST Endpoints ---
@@ -221,14 +242,18 @@ def create_app() -> FastAPI:
         return store.get_quota_status(api_key)
 
     @app.post("/api/tools/transform-memo")
-    async def api_transform_memo(req: MemoTransformRequest) -> Dict[str, Any]:
+    async def api_transform_memo(req: MemoTransformRequest, request: Request) -> Dict[str, Any]:
+        src = detect_source(request.headers.get("user-agent", ""), path="/api/tools/transform-memo")
+        record_event(event_type="tool_call", source=src, tool_name="transform_memo_to_slide_spec", detail=req.theme_preset)
         return transform_memo_to_slide_spec(req)
 
     @app.post("/api/tools/generate-pptx")
-    async def api_generate_pptx(req: GeneratePptxRequest) -> JSONResponse:
+    async def api_generate_pptx(req: GeneratePptxRequest, request: Request) -> JSONResponse:
         try:
             quota_info = store.consume_deck_quota(req.api_key)
             pptx_res = generate_editable_pptx(req.deck_spec)
+            src = detect_source(request.headers.get("user-agent", ""), path="/api/tools/generate-pptx")
+            record_event(event_type="pptx_download", source=src, tool_name="generate_editable_pptx", detail=pptx_res.get("filename", ""))
             return JSONResponse(content={**pptx_res, "quota": quota_info}, status_code=200)
         except PermissionError as exc:
             return JSONResponse(
@@ -237,12 +262,14 @@ def create_app() -> FastAPI:
             )
 
     @app.post("/api/pptx/download")
-    async def api_download_pptx(req: GeneratePptxRequest) -> Response:
+    async def api_download_pptx(req: GeneratePptxRequest, request: Request) -> Response:
         try:
             store.consume_deck_quota(req.api_key)
             raw_bytes = build_pptx_bytes(req.deck_spec)
             slug = "".join(c if c.isalnum() else "_" for c in req.deck_spec.title.lower()).strip("_")[:40]
             filename = f"{slug or 'deckforge_executive_deck'}.pptx"
+            src = detect_source(request.headers.get("user-agent", ""), path="/api/pptx/download")
+            record_event(event_type="pptx_download", source=src, tool_name="generate_editable_pptx", detail=filename)
             return Response(
                 content=raw_bytes,
                 media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -259,9 +286,12 @@ def create_app() -> FastAPI:
         return generate_google_slides_batch_requests(req)
 
     @app.post("/api/tools/remix-slide")
-    async def api_remix_slide(req: SlideRemixRequest) -> JSONResponse:
+    async def api_remix_slide(req: SlideRemixRequest, request: Request) -> JSONResponse:
         try:
-            return JSONResponse(content=remix_or_update_slide(req), status_code=200)
+            res = remix_or_update_slide(req)
+            src = detect_source(request.headers.get("user-agent", ""), path="/api/tools/remix-slide")
+            record_event(event_type="tool_call", source=src, tool_name="remix_or_update_slide", detail=f"Slide {req.slide_number}")
+            return JSONResponse(content=res, status_code=200)
         except ValueError as exc:
             return JSONResponse(content={"status": "error", "error": str(exc)}, status_code=400)
 
@@ -274,9 +304,12 @@ def create_app() -> FastAPI:
         return audit_deck_readiness(req.deck_spec)
 
     @app.post("/api/tools/import-data")
-    async def api_import_data(req: DataImportRequest) -> JSONResponse:
+    async def api_import_data(req: DataImportRequest, request: Request) -> JSONResponse:
         try:
-            return JSONResponse(content=import_tabular_data_to_slide(req), status_code=200)
+            res = import_tabular_data_to_slide(req)
+            src = detect_source(request.headers.get("user-agent", ""), path="/api/tools/import-data")
+            record_event(event_type="tool_call", source=src, tool_name="import_tabular_data_to_slide", detail=req.target_mode)
+            return JSONResponse(content=res, status_code=200)
         except ValueError as exc:
             return JSONResponse(content={"status": "error", "error": str(exc)}, status_code=400)
 

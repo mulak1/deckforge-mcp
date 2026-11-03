@@ -363,6 +363,14 @@ def test_mcp_error_paths_and_manifest_routes():
     assert about_res.status_code == 200 and "Kader Mula" in about_res.text and "mulak1@gmail.com" in about_res.text
     assert client.get("/privacy").status_code == 200
     assert client.get("/terms").status_code == 200
+    analytics_html = client.get("/analytics")
+    assert analytics_html.status_code == 200 and "DeckForge Live Analytics" in analytics_html.text
+    analytics_json = client.get("/api/analytics").json()
+    assert "counters" in analytics_json and "by_source" in analytics_json
+    openapi_spec = client.get("/chatgpt-openapi.json").json()
+    assert openapi_spec["openapi"] == "3.1.0"
+    for path_item in openapi_spec["paths"].values():
+        assert "content" in path_item["post"]["responses"]["200"]
     q_resp = client.get("/api/quota", params={"api_key": "df_free_demo"})
     assert q_resp.status_code == 200 and q_resp.json()["tier"] == "free"
 

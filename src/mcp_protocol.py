@@ -10,6 +10,7 @@ import json
 from typing import Any, Dict, List
 from pydantic import ValidationError
 
+from src.analytics import detect_source, record_event
 from src.google_slides_engine import generate_google_slides_batch_requests
 from src.memo_transformer import (
     get_welcome_greeting,
@@ -214,6 +215,7 @@ def _execute_mcp_tool(
 def handle_mcp_jsonrpc(
     payload: Dict[str, Any],
     quota_store: OAuthAndQuotaStore,
+    user_agent: str = "",
 ) -> Dict[str, Any]:
     """Processes a single request for the /mcp endpoint."""
     req_id = payload.get("id")
@@ -221,6 +223,9 @@ def handle_mcp_jsonrpc(
     params = payload.get("params") or {}
 
     if method == "initialize":
+        client_info = params.get("clientInfo") or {}
+        src = detect_source(user_agent, path="/mcp", client_name=str(client_info.get("name", "")))
+        record_event(event_type="mcp_connect", source=src, tool_name="initialize", detail=str(client_info.get("name", "mcp-client")))
         greeting = get_welcome_greeting()
         return {
             "jsonrpc": "2.0",
@@ -294,6 +299,8 @@ def handle_mcp_jsonrpc(
         arguments = params.get("arguments") or {}
         try:
             call_result = _execute_mcp_tool(tool_name, arguments, quota_store)
+            src = detect_source(user_agent, path="/mcp")
+            record_event(event_type="tool_call", source=src, tool_name=tool_name, detail="mcp tools/call")
             return {"jsonrpc": "2.0", "id": req_id, "result": call_result}
         except (ValidationError, PermissionError, KeyError, ValueError) as exc:
             return {
