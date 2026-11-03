@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import parse_qs
 from fastapi import FastAPI, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 import uvicorn
 
 from src.analytics import (
@@ -50,6 +50,9 @@ from src.templates_and_import import import_tabular_data_to_slide
 
 PORT = 8793
 ROOT_DIR = Path(__file__).resolve().parent.parent
+_OPENAI_CHALLENGE_STATE: dict[str, str] = {
+    "token": os.environ.get("OPENAI_APPS_CHALLENGE", "").strip()
+}
 
 
 def create_app() -> FastAPI:
@@ -79,6 +82,27 @@ def create_app() -> FastAPI:
     @app.get("/chatgpt-openapi.json")
     async def chatgpt_openapi() -> Dict[str, Any]:
         return get_chatgpt_openapi_spec()
+
+    @app.get("/openai-plugin.zip")
+    async def download_openai_plugin_zip() -> Response:
+        zip_path = ROOT_DIR / "deckforge-openai-plugin.zip"
+        return Response(
+            content=zip_path.read_bytes(),
+            media_type="application/zip",
+            headers={"Content-Disposition": 'attachment; filename="deckforge-openai-plugin.zip"'},
+        )
+
+    @app.get("/.well-known/openai-apps-challenge", response_class=PlainTextResponse)
+    async def get_openai_challenge() -> PlainTextResponse:
+        token = _OPENAI_CHALLENGE_STATE.get("token") or os.environ.get("OPENAI_APPS_CHALLENGE", "").strip()
+        return PlainTextResponse(content=token, status_code=200)
+
+    @app.post("/api/admin/openai-challenge")
+    async def set_openai_challenge(request: Request) -> JSONResponse:
+        raw = await request.json()
+        token = str(raw.get("token", "")).strip()
+        _OPENAI_CHALLENGE_STATE["token"] = token
+        return JSONResponse(status_code=200, content={"success": True, "token": token})
 
     @app.get("/docs", response_class=HTMLResponse)
     @app.get("/documentation", response_class=HTMLResponse)

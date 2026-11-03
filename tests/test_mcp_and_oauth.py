@@ -371,6 +371,12 @@ def test_mcp_error_paths_and_manifest_routes():
     assert openapi_spec["openapi"] == "3.1.0"
     for path_item in openapi_spec["paths"].values():
         assert "content" in path_item["post"]["responses"]["200"]
+    zip_resp = client.get("/openai-plugin.zip")
+    assert zip_resp.status_code == 200 and zip_resp.content[:2] == b"PK"
+    ch_set = client.post("/api/admin/openai-challenge", json={"token": "openai-verify-deckforge-2026"})
+    assert ch_set.status_code == 200 and ch_set.json()["token"] == "openai-verify-deckforge-2026"
+    ch_get = client.get("/.well-known/openai-apps-challenge")
+    assert ch_get.status_code == 200 and ch_get.text == "openai-verify-deckforge-2026"
     q_resp = client.get("/api/quota", params={"api_key": "df_free_demo"})
     assert q_resp.status_code == 200 and q_resp.json()["tier"] == "free"
 

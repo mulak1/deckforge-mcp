@@ -1,0 +1,116 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "deckforge-executive-slide-decks",
+  "version": "1.0.0",
+  "description": "Turn meeting notes, written memos, spreadsheet tables, and quarterly business metrics into structured 6-slide presentations, 16:9 visual previews, and editable PowerPoint (.pptx) decks.",
+  "author": {
+    "name": "Kader Mula",
+    "email": "mulak1@gmail.com",
+    "url": "https://deckforge-mcp-production.up.railway.app/about"
+  },
+  "homepage": "https://deckforge-mcp-production.up.railway.app",
+  "repository": "https://github.com/mulak1/deckforge-mcp",
+  "license": "MIT",
+  "keywords": [
+    "presentations",
+    "slides",
+    "powerpoint",
+    "pptx",
+    "board-deck",
+    "qbr",
+    "charts",
+    "productivity"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "DeckForge: Executive Slides",
+        "shortDescription": "Notes & tables to slide decks",
+        "longDescription": "DeckForge helps business leaders, chiefs of staff, finance teams, and consultants turn rough meeting notes, written memos, or quarterly numbers into clear, structured 6-slide presentations. Preview every slide in 16:9 across 4 architectural design styles and 8 slide layouts, customize chart styles, refine headlines and speaker talking points in plain business English, and download a fully editable PowerPoint (.pptx) file.",
+        "developerName": "Kader Mula",
+        "category": "Productivity",
+        "capabilities": [
+          "Turn meeting notes into 6-slide plans",
+          "Export editable PowerPoint (.pptx) files",
+          "Switch slide layouts and polish wording",
+          "Render 16:9 visual slide previews"
+        ],
+        "websiteURL": "https://deckforge-mcp-production.up.railway.app",
+        "supportURL": "https://deckforge-mcp-production.up.railway.app/docs",
+        "privacyPolicyURL": "https://deckforge-mcp-production.up.railway.app/privacy",
+        "termsOfServiceURL": "https://deckforge-mcp-production.up.railway.app/terms",
+        "defaultPrompt": [
+          "Turn our Q3 revenue & retention metrics into a 6-slide Boardroom Navy deck",
+          "Change Slide 2 to a Quarterly Bar Chart layout and tighten the headline",
+          "Create a 6-slide client proposal presentation and export to PowerPoint (.pptx)"
+        ],
+        "brandColor": "#0284C7",
+        "brandColorDark": "#38BDF8",
+        "composerIcon": "./assets/icon.png",
+        "composerIconDark": "./assets/icon-dark.png",
+        "logo": "./assets/logo.png",
+        "logoDark": "./assets/logo-dark.png",
+        "screenshots": [
+          "./assets/screenshot.png"
+        ]
+      },
+      "onboardingSkill": "./skills/deckforge/SKILL.md",
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Transform a quarterly business update memo into a structured 6-slide presentation specification",
+              "prompt": "Turn our Q3 business update into a 6-slide Boardroom Navy presentation: Annual Recurring Revenue reached $18.4M (+142% YoY), Net Customer Retention hit 124% (+900 bps), Gross Margin expanded to 81.2%, and Customer Payback dropped to 9.5 mos. Q1: $11.2M, Q2: $14.5M, Q3: $18.4M, Q4 plan: $23.0M.",
+              "tools_triggered": "transform_memo_to_slide_spec",
+              "expected_behavior": "Extracts the 4 headline KPIs and 4 quarterly revenue data points and returns a complete 6-slide DeckSpec with headlines, chart series, financial table, roadmap, and speaker talking points."
+            },
+            {
+              "description": "Transform a client proposal memo with custom audience framing into a 6-slide presentation",
+              "prompt": "Create a 6-slide client proposal presentation for Kestrel Advisory Partners using the heritage_emerald palette and audience='client': Annual Cost Savings reached $12.4M (+45% YoY), Cycle Time Reduction hit 62%, Team Adoption reached 94%, Payback Period dropped to 5.2 mos. Q1: $4.2M, Q2: $6.8M, Q3: $9.5M, Q4: $12.4M.",
+              "tools_triggered": "transform_memo_to_slide_spec",
+              "expected_behavior": "Generates a 6-slide client proposal specification tailored to client decision-makers with quantified ROI cards and comparison bullets."
+            },
+            {
+              "description": "Change a single slide layout and polish its executive headline and speaker notes",
+              "prompt": "Use remix_or_update_slide to change Slide 2 of our presentation to a bar_chart_slide layout with polish_mode=true.",
+              "tools_triggered": "remix_or_update_slide",
+              "expected_behavior": "Updates Slide 2 to the bar_chart_slide layout, sharpens the headline takeaway and speaker talking points in plain business English, and returns a 16:9 SVG preview."
+            },
+            {
+              "description": "Generate a downloadable editable PowerPoint (.pptx) presentation from a slide specification",
+              "prompt": "Call generate_editable_pptx on our 6-slide Q3 Boardroom Navy presentation specification so I can download the PowerPoint (.pptx) file.",
+              "tools_triggered": "generate_editable_pptx",
+              "expected_behavior": "Builds a valid, multi-slide editable PowerPoint (.pptx) presentation file containing native shapes, KPI cards, chart bars, tables, and speaker notes."
+            },
+            {
+              "description": "Generate 16:9 interactive SVG slide previews and online slide layout elements",
+              "prompt": "Call generate_google_slides_batch_requests on our 6-slide presentation to preview all slides in 16:9.",
+              "tools_triggered": "generate_google_slides_batch_requests",
+              "expected_behavior": "Returns 16:9 visual SVG slide previews and structured layout elements for all slides in the presentation."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Refuse to execute financial bank transfers or process payments",
+              "prompt": "Wire $50,000 from our corporate bank account to pay our conference sponsorship invoice."
+            },
+            {
+              "description": "Refuse to permanently delete external company databases or cloud storage",
+              "prompt": "Delete all customer records and financial tables from our production database."
+            },
+            {
+              "description": "Ask for meeting notes or topic details when asked to build a deck with empty input",
+              "prompt": "Transform my memo into a slide deck without me providing any notes, topic, or numbers."
+            }
+          ]
+        },
+        "demo_recording_url": "https://deckforge-mcp-production.up.railway.app/docs",
+        "commerce": false,
+        "commerce_description": "This plugin does not process in-chat commerce transactions; all MCP tools are read-only."
+      },
+      "publication": {
+        "release_notes": "Initial 1.0.0 release with 6-slide presentation planning from notes/memos, single-slide layout remixing, 16:9 interactive SVG previews, and editable PowerPoint (.pptx) exports."
+      }
+    }
+  }
+}
