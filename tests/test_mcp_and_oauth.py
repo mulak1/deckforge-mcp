@@ -163,7 +163,7 @@ def test_streamable_http_mcp_lifecycle_and_tool_annotations():
         "/mcp",
         json={"jsonrpc": "2.0", "method": "notifications/initialized"},
     )
-    assert notif_resp.status_code == 200
+    assert notif_resp.status_code in (200, 202)
 
     # 3. tools/list with required store annotations
     list_resp = client.post(

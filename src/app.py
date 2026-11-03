@@ -139,12 +139,14 @@ def create_app() -> FastAPI:
 
     # --- OAuth 2.1 with S256 PKCE Endpoints ---
     @app.get("/.well-known/oauth-authorization-server")
-    async def oauth_discovery(request: Request) -> Dict[str, Any]:
+    async def oauth_discovery(request: Request) -> Response:
         req_base = str(request.base_url).rstrip("/")
-        if request.headers.get("x-forwarded-proto") == "https" or "railway.app" in req_base:
-            req_base = req_base.replace("http://", "https://", 1)
+        if (
+            request.headers.get("x-forwarded-proto") == "https" or "railway.app" in req_base
+        ) and request.query_params.get("oauth") != "1":
+            return JSONResponse(status_code=404, content={"detail": "No authentication required for this MCP server."})
         override = req_base if "testserver" not in req_base else None
-        return store.discovery_metadata(base_url_override=override)
+        return JSONResponse(status_code=200, content=store.discovery_metadata(base_url_override=override))
 
     @app.post("/oauth/register")
     async def oauth_register(request: Request) -> JSONResponse:
@@ -240,7 +242,7 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/mcp")
-    async def mcp_jsonrpc_endpoint(request: Request) -> JSONResponse:
+    async def mcp_jsonrpc_endpoint(request: Request) -> Response:
         try:
             payload = await request.json()
         except Exception:
@@ -248,6 +250,9 @@ def create_app() -> FastAPI:
                 content={"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}},
                 status_code=400,
             )
+        method = str(payload.get("method", "")) if isinstance(payload, dict) else ""
+        if isinstance(payload, dict) and payload.get("id") is None and method.startswith("notifications/"):
+            return Response(status_code=202)
         response_data = handle_mcp_jsonrpc(payload, store, user_agent=request.headers.get("user-agent", ""))
         return JSONResponse(content=response_data, status_code=200)
 
