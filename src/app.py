@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import parse_qs
 from fastapi import FastAPI, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 import uvicorn
 
 from src.analytics import (
@@ -77,8 +77,17 @@ def create_app() -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     async def index_studio(request: Request) -> HTMLResponse:
         src = detect_source(request.headers.get("user-agent", ""), path="/")
-        record_event(event_type="page_view", source=src, tool_name="studio", detail="GET /")
+        if "pro_activated=1" in str(request.url.query):
+            record_event(event_type="pro_unlock", source=src, tool_name="studio", detail="Checkout Redirect")
+        else:
+            record_event(event_type="page_view", source=src, tool_name="studio", detail="GET /")
         return HTMLResponse(content=render_studio_html(), status_code=200)
+
+    @app.get("/upgrade")
+    async def upgrade_checkout(request: Request) -> RedirectResponse:
+        src = detect_source(request.headers.get("user-agent", ""), path="/upgrade")
+        record_event(event_type="pro_unlock", source=src, tool_name="checkout", detail="Redirect to Stripe")
+        return RedirectResponse(url="https://buy.stripe.com/9B67sL7pH3FR7W53fYfAc02", status_code=302)
 
     @app.get("/analytics", response_class=HTMLResponse)
     async def analytics_page() -> HTMLResponse:

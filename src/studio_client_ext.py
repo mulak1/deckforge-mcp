@@ -329,7 +329,16 @@ STUDIO_EXT_JS = """
       document.getElementById('jsonInspector').textContent = JSON.stringify({ exported_standalone_html: slug, slide_count: CURRENT_SVGS.length }, null, 2);
     }
     async function refreshQuota() {
-      const key = document.getElementById('apiKeySelect').value;
+      const sel = document.getElementById('apiKeySelect');
+      if (window.location.search.includes('pro_activated=1') || localStorage.getItem('df_pro_active') === '1') {
+        localStorage.setItem('df_pro_active', '1');
+        if (sel) sel.value = 'df_pro_enterprise';
+        const hLink = document.getElementById('headerUpgradeLink');
+        if (hLink) hLink.textContent = '✓ Pro Plan Active ($49.99)';
+        const cLink = document.getElementById('cardUpgradeLink');
+        if (cLink) cLink.textContent = '✓ Pro Plan Active ($49.99)';
+      }
+      const key = sel ? sel.value : 'df_free_demo';
       const q = await (await fetch('/api/quota?api_key=' + encodeURIComponent(key))).json();
       document.getElementById('quotaBox').innerHTML = `<div><strong>Plan:</strong> ${q.price_label}</div><div><strong>Presentations Built:</strong> ${q.decks_used} of ${q.tier === 'pro' ? 'Unlimited' : q.decks_limit} this month</div>`;
     }

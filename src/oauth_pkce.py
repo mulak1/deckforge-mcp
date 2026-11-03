@@ -194,7 +194,7 @@ class OAuthAndQuotaStore:
             "decks_used": account.decks_used,
             "decks_limit": account.decks_limit,
             "remaining": remaining,
-            "upgrade_url": f"{self.base_url}/?upgrade=pro",
+            "upgrade_url": "https://buy.stripe.com/9B67sL7pH3FR7W53fYfAc02",
         }
 
     def consume_deck_quota(self, api_key: str) -> Dict[str, Any]:

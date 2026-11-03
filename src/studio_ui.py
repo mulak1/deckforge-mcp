@@ -74,6 +74,7 @@ def render_studio_html() -> str:
         <a href="/analytics" style="color:var(--accent);text-decoration:none;font-weight:700;">Analytics</a>
         <a href="/privacy" style="color:var(--muted);text-decoration:none;font-weight:600;">Privacy Policy</a>
         <a href="/terms" style="color:var(--muted);text-decoration:none;font-weight:600;">Terms</a>
+        <a id="headerUpgradeLink" href="/upgrade" target="_blank" rel="noopener" style="color:#34d399;text-decoration:none;font-weight:800;">Upgrade ($49.99) →</a>
       </nav>
       <button class="btn-secondary" id="btnExecBriefTop" onclick="openExecutiveBrief()">📄 1-Page Meeting Brief</button>
       <button class="btn-secondary" id="btnExportHtml" onclick="downloadStandaloneHtml()">⬇ Save Web Slides (.html)</button>
@@ -312,9 +313,10 @@ def render_studio_html() -> str:
         <label for="apiKeySelect" style="margin-top:0;">Active Membership Plan</label>
         <select id="apiKeySelect" onchange="refreshQuota()">
           <option value="df_free_demo">Starter Plan — 3 Free Decks / Month (All Layouts &amp; Styles Unlocked)</option>
-          <option value="df_pro_enterprise">Unlimited Pro Plan ($24/mo) — Unlimited Decks</option>
+          <option value="df_pro_enterprise">Unlimited Pro Plan ($49.99) — Unlimited Decks</option>
         </select>
         <div id="quotaBox" style="margin-top:8px;color:#cbd5e1;">Loading plan details...</div>
+        <a id="cardUpgradeLink" class="btn-primary" href="/upgrade" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;margin-top:8px;">Upgrade to Unlimited Pro ($49.99) →</a>
       </div>
 
       <h2>Resources &amp; Support</h2>
