@@ -3,7 +3,14 @@
   "mcpServers": {
     "deckforge": {
       "type": "streamable-http",
-      "url": "https://deckforge-mcp-production.up.railway.app/mcp"
+      "url": "https://deckforge-mcp-production.up.railway.app/mcp",
+      "extensions": {
+        "com.openai": {
+          "auth": {
+            "type": "none"
+          }
+        }
+      }
     }
   }
 }
