@@ -76,9 +76,14 @@ def render_studio_html() -> str:
         <a href="/terms" style="color:var(--muted);text-decoration:none;font-weight:600;">Terms</a>
         <a id="headerUpgradeLink" href="/upgrade" target="_blank" rel="noopener" style="color:#34d399;text-decoration:none;font-weight:800;">Upgrade ($49.99) →</a>
       </nav>
-      <button class="btn-secondary" id="btnExecBriefTop" onclick="openExecutiveBrief()">📄 1-Page Meeting Brief</button>
-      <button class="btn-secondary" id="btnExportHtml" onclick="downloadStandaloneHtml()">⬇ Save Web Slides (.html)</button>
-      <button class="btn-emerald" onclick="downloadPptxFile()">⬇ Download PowerPoint (.pptx)</button>
+      <details class="more-formats-menu" id="moreFormatsMenu">
+        <summary class="btn-secondary" style="list-style:none;">More Formats ▾</summary>
+        <div class="more-formats-popover">
+          <button class="btn-secondary" id="btnExecBriefTop" onclick="openExecutiveBrief()">📄 1-Page Meeting Brief</button>
+          <button class="btn-secondary" id="btnExportHtml" onclick="downloadStandaloneHtml()">⬇ Save Web Slides (.html)</button>
+        </div>
+      </details>
+      <button class="btn-emerald" id="btnHeroDownloadPptx" style="padding:8px 16px;font-size:13px;box-shadow:0 4px 14px rgba(16,185,129,0.3);" onclick="downloadPptxFile()">⬇ Download PowerPoint (.pptx)</button>
     </div>
   </header>
 
@@ -109,65 +114,85 @@ def render_studio_html() -> str:
 
   <main class="studio-grid">
     <aside class="pane-left">
-      <h2>1. Sample Business Templates (8)</h2>
+      <h2>1. Pick a Starter Template (8)</h2>
+      <div id="quickPresetPills" class="quick-preset-pills" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;"></div>
       <select id="presetSelect" onchange="loadPreset(Number(this.value))">
         <option value="0">1. Series A Board Update [Board &amp; Investors]</option>
       </select>
 
       <details class="composer" id="memoComposerDetails" open>
-        <summary>2. Your Notes, Audience &amp; Visual Style</summary>
+        <summary>2. Quick Build from Your Notes</summary>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
           <label for="deckTitle" style="margin:0;">Presentation Title</label>
           <div style="display:flex;gap:4px;">
             <button class="btn-secondary" style="padding:2px 8px;font-size:10.5px;" onclick="pasteQuickSampleNotes()">Paste Sample Notes</button>
-            <button class="btn-secondary" style="padding:2px 8px;font-size:10.5px;" onclick="clearToBlankNotes()">Clear Form</button>
+            <button class="btn-secondary" id="btnClearNotes" style="padding:2px 8px;font-size:10.5px;" onclick="clearToBlankNotes()">Clear</button>
           </div>
         </div>
         <input id="deckTitle" value="Series A Board of Directors Update — Q3 2026" placeholder="e.g., Q3 Business Review &amp; Q4 Priorities" />
 
-        <label for="orgName">Company or Team Name</label>
-        <input id="orgName" value="Northstar Enterprise Corp" placeholder="e.g., Acme Corp" />
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="display:grid;grid-template-columns:1.4fr 0.8fr;gap:8px;">
           <div>
-            <label for="audienceSelect">Target Audience</label>
-            <select id="audienceSelect">
-              <option value="board">Board &amp; Investors</option>
-              <option value="leadership">Executive Leadership</option>
-              <option value="client">Client &amp; Sales Proposal</option>
-              <option value="team">Team &amp; Operations</option>
-            </select>
+            <label for="orgName">Company or Team</label>
+            <input id="orgName" value="Northstar Enterprise Corp" placeholder="e.g., Acme Corp" />
           </div>
           <div>
-            <label for="themePreset">Color Palette (9)</label>
-            <select id="themePreset" onchange="switchThemeLive(this.value)">
-              <option value="boardroom_navy">Boardroom Navy</option>
-              <option value="executive_indigo">Executive Indigo</option>
-              <option value="modern_slate">Modern Slate</option>
-              <option value="heritage_emerald">Heritage Emerald</option>
-              <option value="royal_plum">Royal Plum</option>
-              <option value="warm_terracotta">Warm Terracotta</option>
-              <option value="pacific_atlas">Pacific Blue</option>
-              <option value="sage_report">Sage &amp; Gold</option>
-              <option value="warm_sandstone">Warm Sandstone</option>
+            <label for="targetSlideCountSelect">Slide Count</label>
+            <select id="targetSlideCountSelect" onchange="updateLiveSlideEstimate()">
+              <option value="5">5 Slides</option>
+              <option value="6" selected>6 Slides</option>
+              <option value="8">8 Slides</option>
             </select>
           </div>
         </div>
 
-        <label for="styleFamilySelect">Architectural Design Style (4 Free Styles)</label>
-        <select id="styleFamilySelect" onchange="switchDesignStyleLive(this.value)">
-          <option value="classic_boardroom">Classic Boardroom (Solid Header &amp; Rounded Cards)</option>
-          <option value="editorial_serif">Editorial Magazine (Serif Type &amp; Paper Rule Header)</option>
-          <option value="modern_minimal">Modern Swiss Grid (Top Accent Bar &amp; Crisp Square Grid)</option>
-          <option value="bold_keynote">Executive Keynote Dark (Dark Stage &amp; Elevated Cards)</option>
-        </select>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;margin-bottom:4px;">
+          <label for="rawMemo" style="margin:0;">Paste Your Meeting Notes or Numbers</label>
+          <span class="thumb-badge" id="liveSlideEstimateBadge">~6 slides · 4 metrics detected</span>
+        </div>
+        <textarea id="rawMemo" oninput="updateLiveSlideEstimate()" placeholder="Paste your bullet points, key metrics (like Revenue: $14.2M +35% YoY), quarterly numbers (Q1: $10M, Q2: $12M...), and next steps..."></textarea>
+        <button class="btn-primary" style="width:100%;margin-top:8px;padding:9px 12px;font-size:13px;" onclick="runTransformMemo()">Build / Update My Slide Deck</button>
 
-        <label for="footerLabelInput">Slide Footer / Confidentiality Note</label>
-        <input id="footerLabelInput" value="Confidential — Leadership Briefing" placeholder="e.g., Confidential — For Internal Discussion Only" />
-
-        <label for="rawMemo">Paste Your Meeting Notes, Memo, or Numbers</label>
-        <textarea id="rawMemo" placeholder="Paste your bullet points, key metrics (like Revenue: $14.2M +35% YoY), quarterly numbers (Q1: $10M, Q2: $12M...), and next steps..."></textarea>
-        <button class="btn-primary" style="width:100%;margin-top:10px;" onclick="runTransformMemo()">Build / Update My Slide Deck</button>
+        <details id="customizeThemeDrawer" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
+          <summary style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--muted);">
+            <span>Customize Theme, Colors &amp; Audience ▾</span>
+            <span class="thumb-badge" id="activeThemeSummaryPill">Boardroom Navy · Classic</span>
+          </summary>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
+            <div>
+              <label for="audienceSelect">Target Audience</label>
+              <select id="audienceSelect">
+                <option value="board">Board &amp; Investors</option>
+                <option value="leadership">Executive Leadership</option>
+                <option value="client">Client &amp; Sales Proposal</option>
+                <option value="team">Team &amp; Operations</option>
+              </select>
+            </div>
+            <div>
+              <label for="themePreset">Color Palette (9)</label>
+              <select id="themePreset" onchange="switchThemeLive(this.value)">
+                <option value="boardroom_navy">Boardroom Navy</option>
+                <option value="executive_indigo">Executive Indigo</option>
+                <option value="modern_slate">Modern Slate</option>
+                <option value="heritage_emerald">Heritage Emerald</option>
+                <option value="royal_plum">Royal Plum</option>
+                <option value="warm_terracotta">Warm Terracotta</option>
+                <option value="pacific_atlas">Pacific Blue</option>
+                <option value="sage_report">Sage &amp; Gold</option>
+                <option value="warm_sandstone">Warm Sandstone</option>
+              </select>
+            </div>
+          </div>
+          <label for="styleFamilySelect">Architectural Design Style (4 Free Styles)</label>
+          <select id="styleFamilySelect" onchange="switchDesignStyleLive(this.value)">
+            <option value="classic_boardroom">Classic Boardroom (Solid Header &amp; Rounded Cards)</option>
+            <option value="editorial_serif">Editorial Magazine (Serif Type &amp; Paper Rule Header)</option>
+            <option value="modern_minimal">Modern Swiss Grid (Top Accent Bar &amp; Crisp Square Grid)</option>
+            <option value="bold_keynote">Executive Keynote Dark (Dark Stage &amp; Elevated Cards)</option>
+          </select>
+          <label for="footerLabelInput">Slide Footer / Confidentiality Note</label>
+          <input id="footerLabelInput" value="Confidential — Leadership Briefing" placeholder="e.g., Confidential — For Internal Discussion Only" />
+        </details>
       </details>
 
       <details class="composer" id="dataImportDetails">
@@ -235,7 +260,13 @@ def render_studio_html() -> str:
             <button class="btn-primary" id="btnPresentMode" onclick="togglePresentMode(true)">⛶ Present Fullscreen (F)</button>
           </div>
         </div>
+        <div class="quick-layout-bar" id="quickLayoutChipBar" aria-label="1-Click Slide Layout Switcher"></div>
         <div id="stageCanvas">Loading slide preview...</div>
+        <div class="bottom-slide-nav" id="bottomSlideNav">
+          <button class="btn-secondary" onclick="stepSlide(-1)">← Prev Slide</button>
+          <span id="bottomSlideProgressPill" class="thumb-badge" style="font-size:12px;padding:5px 12px;">Slide 1 of 6 · Use ← / → arrow keys</span>
+          <button class="btn-secondary" onclick="stepSlide(1)">Next Slide →</button>
+        </div>
         <div class="notes-box" id="speakerNotesBox">Talking points for this slide will appear here.</div>
 
         <div class="editor-panel" id="slideEditorPanel">

@@ -224,3 +224,30 @@ def test_studio_ui_structured_body_editor_magic_polish_and_html_export():
         "downloadStandaloneHtml()",
     ]:
         assert marker in html, f"Missing Iteration 3 Studio UI marker: {marker}"
+
+
+def test_studio_ui_simplification_and_intuitiveness_iteration():
+    """
+    Verifies the 5 UI Simplification & Intuitiveness improvements:
+    1. Progressive Disclosure ('customizeThemeDrawer', 'activeThemeSummaryPill')
+    2. Arrow-Key & Bottom Slide Progress Bar ('bottomSlideNav', 'bottomSlideProgressPill')
+    3. 1-Click Quick Layout Switcher ('quickLayoutChipBar', 'quickSwitchLayout')
+    4. Live Slide Estimate Badge + Clear + Starter Pills ('liveSlideEstimateBadge', 'btnClearNotes', 'quickPresetPills')
+    5. Unified Export Bar ('btnHeroDownloadPptx', 'moreFormatsMenu')
+    """
+    html = render_studio_html()
+    for marker in [
+        "customizeThemeDrawer",
+        "activeThemeSummaryPill",
+        "bottomSlideNav",
+        "bottomSlideProgressPill",
+        "quickLayoutChipBar",
+        "quickSwitchLayout",
+        "liveSlideEstimateBadge",
+        "btnClearNotes",
+        "quickPresetPills",
+        "moreFormatsMenu",
+        "btnHeroDownloadPptx",
+    ]:
+        assert marker in html, f"Missing UI simplification marker: {marker}"
+

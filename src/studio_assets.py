@@ -27,6 +27,15 @@ STUDIO_CSS = """
     .view-switcher { display:flex; gap:4px; background:#020617; padding:4px; border-radius:10px; border:1px solid var(--border); }
     .view-btn { background:transparent; color:var(--muted); border:none; padding:6px 12px; border-radius:7px; font-size:12px; font-weight:700; cursor:pointer; }
     .view-btn.active { background:var(--indigo); color:#ffffff; }
+    .more-formats-menu { position:relative; }
+    .more-formats-menu summary::-webkit-details-marker { display:none; }
+    .more-formats-popover { position:absolute; right:0; top:calc(100% + 6px); background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:8px; display:flex; flex-direction:column; gap:6px; min-width:210px; z-index:80; box-shadow:0 10px 25px rgba(0,0,0,0.5); }
+    .preset-chip { background:#020617; color:#cbd5e1; border:1px solid var(--border); padding:3px 8px; border-radius:999px; font-size:10.5px; font-weight:700; cursor:pointer; }
+    .preset-chip.active { border-color:var(--accent); color:var(--accent); background:#1e293b; }
+    .quick-layout-bar { display:flex; gap:6px; align-items:center; flex-wrap:wrap; max-width:960px; margin:0 auto 10px; padding:6px 10px; background:rgba(15,23,42,0.75); border:1px solid var(--border); border-radius:9px; }
+    .layout-chip { background:#020617; color:var(--muted); border:1px solid var(--border); padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700; cursor:pointer; }
+    .layout-chip.active { background:var(--accent); color:#020617; border-color:var(--accent); font-weight:800; }
+    .bottom-slide-nav { display:flex; justify-content:space-between; align-items:center; max-width:960px; margin:10px auto 0; padding:8px 14px; background:rgba(15,23,42,0.85); border:1px solid var(--border); border-radius:10px; }
     .theme-bar { display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:8px 20px; background:#090f1d; border-bottom:1px solid var(--border); }
     .theme-bar-label { font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; margin-right:4px; }
     .theme-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:700; cursor:pointer; background:var(--panel); color:var(--text); border:1px solid var(--border); }
@@ -84,17 +93,12 @@ STUDIO_CSS = """
 
 STUDIO_JS = """
     let PRESETS = [], THEMES = {}, DESIGN_STYLES = {}, CURRENT_DECK = null, CURRENT_SVGS = [];
-    let ACTIVE_SLIDE_IDX = 0, ACTIVE_VIEW_MODE = 'stage', ACTIVE_THEME_KEY = 'boardroom_navy';
+    let ACTIVE_SLIDE_IDX = 0, ACTIVE_VIEW_MODE = 'stage', ACTIVE_THEME_KEY = 'boardroom_navy', ACTIVE_PRESET_IDX = 0;
     let PRESENT_ACTIVE = false, TELEPROMPTER_VISIBLE = true;
     const LAYOUT_LABELS = {
-      title_hero: 'Cover Slide',
-      executive_summary: '3-Pillar Summary',
-      kpi_metrics_grid: 'Key Numbers Grid',
-      bar_chart_slide: 'Data Chart',
-      two_column_comparison: 'Side-by-Side Comparison',
-      financial_table: 'Financial & Data Table',
-      executive_roadmap: '90-Day Roadmap',
-      quote_callout: 'Customer Quote & ROI'
+      title_hero: 'Cover Slide', executive_summary: '3-Pillar Summary', kpi_metrics_grid: 'Key Numbers Grid',
+      bar_chart_slide: 'Data Chart', two_column_comparison: 'Side-by-Side Comparison',
+      financial_table: 'Financial & Data Table', executive_roadmap: '90-Day Roadmap', quote_callout: 'Customer Quote & ROI'
     };
     const LAYOUT_DEFAULT_HEADLINES = {
       title_hero: ['Executive Briefing & Strategic Overview', 'Key priorities, operating metrics, and 90-day execution plan'],
@@ -115,22 +119,20 @@ STUDIO_JS = """
       await refreshQuota();
       window.addEventListener('keydown', handleGlobalKeydown);
     }
-    function dismissWelcomeBanner() {
-      const el = document.getElementById('welcomeGreetingBanner');
-      if (el) el.style.display = 'none';
-    }
+    function dismissWelcomeBanner() { const el = document.getElementById('welcomeGreetingBanner'); if (el) el.style.display = 'none'; }
     function clearToBlankNotes() {
-      document.getElementById('deckTitle').value = '';
-      document.getElementById('orgName').value = '';
-      document.getElementById('rawMemo').value = '';
-      const details = document.getElementById('memoComposerDetails');
-      if (details) details.open = true;
+      ['deckTitle', 'orgName', 'rawMemo'].forEach(id => { document.getElementById(id).value = ''; });
+      ACTIVE_PRESET_IDX = -1; if (typeof renderQuickPresetPills === 'function') renderQuickPresetPills();
+      if (typeof updateLiveSlideEstimate === 'function') updateLiveSlideEstimate();
+      const details = document.getElementById('memoComposerDetails'); if (details) details.open = true;
       document.getElementById('deckTitle').focus();
     }
     function pasteQuickSampleNotes() {
       document.getElementById('deckTitle').value = 'Quarterly Leadership Operating Update';
       document.getElementById('orgName').value = 'Apex Commercial Partners';
       document.getElementById('rawMemo').value = 'Annual Revenue reached $24.6M (+38% YoY), Net Customer Retention hit 122% (+400 bps), Gross Margin expanded to 79.5% (+250 bps), Customer Payback dropped to 8.4 mos. Q1: $16.2M, Q2: $18.9M, Q3: $21.5M, Q4: $24.6M.\\n- Self-serve customer referrals drove 62% of new team sign-ups this quarter.\\n- Standardized customer onboarding cut setup time from 14 days to 3 days.';
+      ACTIVE_PRESET_IDX = -1; if (typeof renderQuickPresetPills === 'function') renderQuickPresetPills();
+      if (typeof updateLiveSlideEstimate === 'function') updateLiveSlideEstimate();
     }
     function handleGlobalKeydown(e) {
       const tag = (e.target && e.target.tagName) || '';
@@ -148,6 +150,7 @@ STUDIO_JS = """
       document.getElementById('customBgHex').value = theme.background_hex || '#F8FAFC';
       const styleEl = document.getElementById('styleFamilySelect');
       if (styleEl && theme.style_family) styleEl.value = theme.style_family;
+      if (typeof updateThemeSummaryPill === 'function') updateThemeSummaryPill();
     }
     function renderThemePills() {
       const curStyle = (CURRENT_DECK && CURRENT_DECK.theme && CURRENT_DECK.theme.style_family) || 'classic_boardroom';
@@ -161,6 +164,7 @@ STUDIO_JS = """
           `<span class="swatch" style="background:${t.secondary_hex};border:1px solid ${t.accent_hex};"></span>${t.name}</button>`
         ).join('') +
         '<span class="theme-bar-label" style="margin-left:10px;">Visual Style:</span>' + stylePills;
+      if (typeof updateThemeSummaryPill === 'function') updateThemeSummaryPill();
     }
     async function switchThemeLive(themeKey) {
       if (!THEMES[themeKey] || !CURRENT_DECK) return;
@@ -174,10 +178,7 @@ STUDIO_JS = """
       const preset = DESIGN_STYLES[styleKey] || { font_family: 'Inter, sans-serif', card_radius: 10 };
       const isDarkKeynote = styleKey === 'bold_keynote';
       const updatedTheme = {
-        ...CURRENT_DECK.theme,
-        style_family: styleKey,
-        font_family: preset.font_family,
-        card_radius: preset.card_radius,
+        ...CURRENT_DECK.theme, style_family: styleKey, font_family: preset.font_family, card_radius: preset.card_radius,
         background_hex: isDarkKeynote ? '#0F172A' : (CURRENT_DECK.theme.background_hex === '#0F172A' ? '#F8FAFC' : CURRENT_DECK.theme.background_hex),
       };
       CURRENT_DECK = { ...CURRENT_DECK, theme: updatedTheme };
@@ -194,9 +195,7 @@ STUDIO_JS = """
         primary_hex: document.getElementById('customPrimaryHex').value.toUpperCase(),
         secondary_hex: document.getElementById('customSecondaryHex').value.toUpperCase(),
         accent_hex: document.getElementById('customAccentHex').value.toUpperCase(),
-        background_hex: bgHex,
-        text_hex: isDarkBg ? '#F8FAFC' : '#0F172A',
-        muted_hex: isDarkBg ? '#CBD5E1' : '#475569',
+        background_hex: bgHex, text_hex: isDarkBg ? '#F8FAFC' : '#0F172A', muted_hex: isDarkBg ? '#CBD5E1' : '#475569',
       };
       CURRENT_DECK = { ...CURRENT_DECK, theme: customTheme };
       await renderDeckPreview(CURRENT_DECK, false);
@@ -204,7 +203,8 @@ STUDIO_JS = """
     }
     async function loadPreset(idx) {
       const p = PRESETS[idx]; if (!p) return;
-      ACTIVE_THEME_KEY = p.theme_preset;
+      ACTIVE_PRESET_IDX = idx; ACTIVE_THEME_KEY = p.theme_preset;
+      document.getElementById('presetSelect').value = String(idx);
       document.getElementById('deckTitle').value = p.deck_spec.title;
       document.getElementById('orgName').value = p.deck_spec.organization;
       document.getElementById('themePreset').value = p.theme_preset;
@@ -213,6 +213,8 @@ STUDIO_JS = """
       document.getElementById('rawMemo').value = p.raw_memo;
       CURRENT_DECK = JSON.parse(JSON.stringify(p.deck_spec));
       syncColorPickers(CURRENT_DECK.theme); renderThemePills();
+      if (typeof renderQuickPresetPills === 'function') renderQuickPresetPills();
+      if (typeof updateLiveSlideEstimate === 'function') updateLiveSlideEstimate();
       await renderDeckPreview(CURRENT_DECK, true);
     }
     async function runTransformMemo() {
@@ -221,6 +223,7 @@ STUDIO_JS = """
         alert('Please enter at least a sentence or two of notes or numbers so we can build your slides.');
         return;
       }
+      const countEl = document.getElementById('targetSlideCountSelect');
       const payload = {
         raw_memo: rawMemoVal,
         deck_title: document.getElementById('deckTitle').value.trim() || 'Executive Presentation Update',
@@ -228,7 +231,7 @@ STUDIO_JS = """
         theme_preset: document.getElementById('themePreset').value,
         audience: document.getElementById('audienceSelect') ? document.getElementById('audienceSelect').value : 'board',
         footer_label: document.getElementById('footerLabelInput') ? document.getElementById('footerLabelInput').value : 'Confidential — Leadership Briefing',
-        target_slide_count: 6
+        target_slide_count: countEl ? Number(countEl.value) : 6
       };
       ACTIVE_THEME_KEY = payload.theme_preset; renderThemePills();
       const data = await (await fetch('/api/tools/transform-memo', {
@@ -280,12 +283,16 @@ STUDIO_JS = """
       const card = CURRENT_SVGS[ACTIVE_SLIDE_IDX]; if (!card) return;
       const friendlyLayout = LAYOUT_LABELS[card.layout_type] || card.layout_type;
       document.getElementById('slideCounterLabel').textContent = `Slide ${card.slide_number} of ${CURRENT_SVGS.length}`;
+      const btmPill = document.getElementById('bottomSlideProgressPill');
+      if (btmPill) btmPill.textContent = `Slide ${card.slide_number} of ${CURRENT_SVGS.length} · ${friendlyLayout} (Use ← / → keys)`;
       document.getElementById('activeLayoutBadge').textContent = friendlyLayout;
       document.getElementById('stageCanvas').innerHTML = card.svg;
       const slideObj = (CURRENT_DECK && CURRENT_DECK.slides && CURRENT_DECK.slides[ACTIVE_SLIDE_IDX]) || {};
+      const activeLayout = slideObj.layout_type || card.layout_type;
+      if (typeof renderQuickLayoutChips === 'function') renderQuickLayoutChips(activeLayout);
       const notesText = slideObj.speaker_notes || 'No talking points added for this slide yet.';
       document.getElementById('speakerNotesBox').innerHTML = `<strong>Talking Points (Slide ${card.slide_number} · ${friendlyLayout}):</strong> ` + notesText;
-      document.getElementById('editSlideLayout').value = slideObj.layout_type || card.layout_type;
+      document.getElementById('editSlideLayout').value = activeLayout;
       document.getElementById('editActionTitle').value = slideObj.action_title || card.action_title || '';
       document.getElementById('editSubtitle').value = slideObj.subtitle || '';
       document.getElementById('editTakeaway').value = slideObj.takeaway_banner || '';

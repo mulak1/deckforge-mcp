@@ -7,6 +7,44 @@ CSV/Spreadsheet Data Importer, 1-Click Wording Polish, 1-Page Meeting Brief, and
 from __future__ import annotations
 
 STUDIO_EXT_JS = """
+    const QUICK_LAYOUT_CHIPS = [
+      ['title_hero', 'Cover'], ['kpi_metrics_grid', 'Key Numbers'], ['bar_chart_slide', 'Data Chart'],
+      ['financial_table', 'Table'], ['two_column_comparison', 'Side-by-Side'], ['executive_roadmap', '3-Step Plan'],
+      ['executive_summary', 'Summary'], ['quote_callout', 'Customer Quote']
+    ];
+    function renderQuickPresetPills() {
+      const box = document.getElementById('quickPresetPills'); if (!box || !PRESETS.length) return;
+      box.innerHTML = PRESETS.slice(0, 4).map((p, i) =>
+        `<button class="preset-chip ${i === ACTIVE_PRESET_IDX ? 'active' : ''}" onclick="loadPreset(${i})">${p.label.split(' ')[0]} ${p.label.split(' ')[1] || ''}</button>`
+      ).join('');
+    }
+    function updateLiveSlideEstimate() {
+      const badge = document.getElementById('liveSlideEstimateBadge'); if (!badge) return;
+      const raw = (document.getElementById('rawMemo') && document.getElementById('rawMemo').value.trim()) || '';
+      const cnt = Number((document.getElementById('targetSlideCountSelect') && document.getElementById('targetSlideCountSelect').value) || 6);
+      if (!raw) { badge.textContent = 'Paste notes to estimate slides'; return; }
+      const metrics = (raw.match(/(\\$\\d+|\\d+(?:\\.\\d+)?%|\\d+\\s*bps|\\d+(?:\\.\\d+)?x)/gi) || []).length;
+      badge.textContent = `~${cnt} slides · ${Math.max(metrics, 1)} metrics detected`;
+    }
+    function updateThemeSummaryPill() {
+      const pill = document.getElementById('activeThemeSummaryPill'); if (!pill) return;
+      const tName = (THEMES[ACTIVE_THEME_KEY] && THEMES[ACTIVE_THEME_KEY].name) || 'Boardroom Navy';
+      const sKey = (CURRENT_DECK && CURRENT_DECK.theme && CURRENT_DECK.theme.style_family) || 'classic_boardroom';
+      const sName = (DESIGN_STYLES[sKey] && DESIGN_STYLES[sKey].label) || 'Classic';
+      pill.textContent = `${tName} · ${sName}`;
+    }
+    function renderQuickLayoutChips(activeLayout) {
+      const bar = document.getElementById('quickLayoutChipBar'); if (!bar) return;
+      bar.innerHTML = '<span style="font-size:11px;font-weight:800;color:var(--muted);margin-right:4px;">1-Click Layout:</span>' +
+        QUICK_LAYOUT_CHIPS.map(([k, lbl]) =>
+          `<button class="layout-chip ${k === activeLayout ? 'active' : ''}" onclick="quickSwitchLayout('${k}')">${lbl}</button>`
+        ).join('');
+    }
+    async function quickSwitchLayout(layoutKey) {
+      const sel = document.getElementById('editSlideLayout');
+      if (sel) sel.value = layoutKey;
+      await onLayoutDropdownChange();
+    }
     async function moveSlide(idx, dir, ev) {
       if (ev) ev.stopPropagation();
       const target = idx + dir;
@@ -137,22 +175,18 @@ STUDIO_EXT_JS = """
       }
     }
     function syncVisualFieldsToJson() {
-      const lt = document.getElementById('editSlideLayout').value;
-      const jsonBox = document.getElementById('editBodyDataJson');
+      const lt = document.getElementById('editSlideLayout').value, jsonBox = document.getElementById('editBodyDataJson');
       if (!jsonBox) return;
       let obj = {};
       if (lt === 'kpi_metrics_grid') {
-        const rows = [0, 1, 2, 3].map(i => {
+        obj = { kpis: [0, 1, 2, 3].map(i => {
           const lbl = document.querySelector(`[data-kpi-idx="${i}"][data-field="label"]`);
-          if (!lbl) return null;
-          return {
-            label: lbl.value,
-            value: document.querySelector(`[data-kpi-idx="${i}"][data-field="value"]`).value,
+          return lbl ? {
+            label: lbl.value, value: document.querySelector(`[data-kpi-idx="${i}"][data-field="value"]`).value,
             delta: document.querySelector(`[data-kpi-idx="${i}"][data-field="delta"]`).value,
             sentiment: document.querySelector(`[data-kpi-idx="${i}"][data-field="sentiment"]`).value
-          };
-        }).filter(Boolean);
-        obj = { kpis: rows };
+          } : null;
+        }).filter(Boolean) };
       } else if (lt === 'bar_chart_slide') {
         const items = [];
         document.querySelectorAll('[data-bar-idx][data-field="category"]').forEach((el, i) => {
@@ -161,8 +195,7 @@ STUDIO_EXT_JS = """
           items.push({ category: el.value, value: val, target: tRaw !== '' ? parseFloat(tRaw) : null });
         });
         obj = {
-          chart_title: document.getElementById('visChartTitle').value,
-          chart_unit: document.getElementById('visChartUnit').value,
+          chart_title: document.getElementById('visChartTitle').value, chart_unit: document.getElementById('visChartUnit').value,
           chart_type: document.getElementById('visChartType') ? document.getElementById('visChartType').value : 'vertical_bar',
           chart_show_target: document.getElementById('visChartShowTarget') ? document.getElementById('visChartShowTarget').checked : true,
           chart_show_values: document.getElementById('visChartShowValues') ? document.getElementById('visChartShowValues').checked : true,
@@ -177,18 +210,15 @@ STUDIO_EXT_JS = """
           right_bullets: document.getElementById('visRightBullets').value.split('\\n').map(s => s.trim()).filter(Boolean)
         };
       } else if (lt === 'financial_table') {
-        obj = {
-          table: {
-            headers: document.getElementById('visTblHeaders').value.split('|').map(s => s.trim()).filter(Boolean),
-            rows: document.getElementById('visTblRows').value.split('\\n').map(r => r.split('|').map(c => c.trim())).filter(r => r.length && r[0])
-          }
-        };
+        obj = { table: {
+          headers: document.getElementById('visTblHeaders').value.split('|').map(s => s.trim()).filter(Boolean),
+          rows: document.getElementById('visTblRows').value.split('\\n').map(r => r.split('|').map(c => c.trim())).filter(r => r.length && r[0])
+        }};
       } else if (lt === 'executive_roadmap' || lt === 'executive_summary') {
         const phases = [];
         document.querySelectorAll('[data-rm-idx][data-field="phase"]').forEach((el, i) => {
           phases.push({
-            phase: el.value,
-            timeline: document.querySelector(`[data-rm-idx="${i}"][data-field="timeline"]`).value,
+            phase: el.value, timeline: document.querySelector(`[data-rm-idx="${i}"][data-field="timeline"]`).value,
             owner: document.querySelector(`[data-rm-idx="${i}"][data-field="owner"]`).value,
             deliverables: document.querySelector(`[data-rm-idx="${i}"][data-field="deliverables"]`).value.split(';').map(s => s.trim()).filter(Boolean)
           });
@@ -196,14 +226,10 @@ STUDIO_EXT_JS = """
         obj = { roadmap_phases: phases };
       } else if (lt === 'quote_callout') {
         const parseKpi = (id) => {
-          const parts = (document.getElementById(id) ? document.getElementById(id).value : '').split('|').map(s => s.trim());
-          return { label: parts[0] || 'Impact Metric', value: parts[1] || '84%', delta: parts[2] || '+25% YoY', sentiment: 'positive' };
+          const p = (document.getElementById(id) ? document.getElementById(id).value : '').split('|').map(s => s.trim());
+          return { label: p[0] || 'Impact Metric', value: p[1] || '84%', delta: p[2] || '+25% YoY', sentiment: 'positive' };
         };
-        obj = {
-          quote_text: document.getElementById('visQuoteText').value,
-          quote_attribution: document.getElementById('visQuoteAttrib').value,
-          kpis: [parseKpi('visQuoteKpi0'), parseKpi('visQuoteKpi1')]
-        };
+        obj = { quote_text: document.getElementById('visQuoteText').value, quote_attribution: document.getElementById('visQuoteAttrib').value, kpis: [parseKpi('visQuoteKpi0'), parseKpi('visQuoteKpi1')] };
       }
       jsonBox.value = JSON.stringify(obj, null, 2);
     }
@@ -215,12 +241,7 @@ STUDIO_EXT_JS = """
     function pasteSampleSheetData() {
       document.getElementById('importSlideTitle').value = 'Regional Enterprise Revenue vs. Plan Target ($M)';
       document.getElementById('importChartUnit').value = '$M';
-      document.getElementById('rawTabularData').value =
-        'Region,Actual Revenue ($M),Plan Goal ($M),YoY Growth\\n' +
-        'North America,24.8,22.0,+38%\\n' +
-        'Europe & UK,14.6,13.5,+44%\\n' +
-        'Asia-Pacific,9.4,8.2,+52%\\n' +
-        'Latin America,5.2,4.8,+31%';
+      document.getElementById('rawTabularData').value = 'Region,Actual Revenue ($M),Plan Goal ($M),YoY Growth\\nNorth America,24.8,22.0,+38%\\nEurope & UK,14.6,13.5,+44%\\nAsia-Pacific,9.4,8.2,+52%\\nLatin America,5.2,4.8,+31%';
     }
     function handleCsvFileUpload(inputEl) {
       const file = inputEl && inputEl.files && inputEl.files[0];
