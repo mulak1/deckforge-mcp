@@ -352,3 +352,61 @@ def test_p0_zero_bloat_studio_ux_polish_markers():
         assert marker in html, f"Missing P0 Studio UX marker: {marker}"
 
 
+def test_security_audit_remediations_admin_lockdown_xss_and_headers(monkeypatch):
+    """
+    Verifies the 3 Cloudflare & Application Security Audit remediations:
+    1. [HIGH] POST /api/admin/openai-challenge rejects unauthenticated calls (403) and requires x-admin-secret
+    2. [HIGH] GET /analytics HTML-escapes stored telemetry fields and truncates detail/tool to 80 chars
+    3. [MEDIUM] Cloudflare/OWASP security headers on responses + 413 on Content-Length > 5MB
+    """
+    client = TestClient(create_app())
+
+    # 1. Admin endpoint lockdown
+    unauth = client.post("/api/admin/openai-challenge", json={"token": "spoofed"})
+    assert unauth.status_code == 403
+    assert client.get("/.well-known/openai-apps-challenge").text == "WCjMPRQErs6vhNqMtbCP6eRJZFwPdr2jDO8qY4ogHMQ"
+
+    monkeypatch.setenv("ADMIN_API_SECRET", "super-secret-admin-key-2026")
+    wrong_sec = client.post(
+        "/api/admin/openai-challenge",
+        json={"token": "spoofed"},
+        headers={"x-admin-secret": "wrong-key"},
+    )
+    assert wrong_sec.status_code == 403
+    valid_sec = client.post(
+        "/api/admin/openai-challenge",
+        json={"token": "WCjMPRQErs6vhNqMtbCP6eRJZFwPdr2jDO8qY4ogHMQ"},
+        headers={"x-admin-secret": "super-secret-admin-key-2026"},
+    )
+    assert valid_sec.status_code == 200
+
+    # 2. Stored XSS escaping & 80-char truncation in /analytics
+    xss_payload = "<script>alert('xss')</script>" + ("A" * 100)
+    client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": 99,
+            "method": "initialize",
+            "params": {"clientInfo": {"name": xss_payload}},
+        },
+    )
+    analytics_resp = client.get("/analytics")
+    assert analytics_resp.status_code == 200
+    assert "<script>alert('xss')</script>" not in analytics_resp.text
+    assert "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;" in analytics_resp.text
+
+    # 3. Cloudflare/OWASP Security Headers & 5MB Content-Length cap
+    assert analytics_resp.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains; preload"
+    assert analytics_resp.headers["x-content-type-options"] == "nosniff"
+    assert analytics_resp.headers["x-frame-options"] == "DENY"
+    assert analytics_resp.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert analytics_resp.headers["permissions-policy"] == "camera=(), microphone=(), geolocation=(), payment=()"
+    assert analytics_resp.headers["cross-origin-opener-policy"] == "same-origin"
+    assert "frame-ancestors 'none'" in analytics_resp.headers["content-security-policy"]
+
+    too_large = client.post("/mcp", content=b"{}", headers={"Content-Length": "6000000"})
+    assert too_large.status_code == 413
+
+
+

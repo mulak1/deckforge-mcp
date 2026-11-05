@@ -7,6 +7,7 @@ Streamable HTTP MCP (/mcp), and OAuth 2.1 with S256 PKCE endpoints.
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
 from pathlib import Path
@@ -16,31 +17,16 @@ from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 import uvicorn
 
-from src.analytics import (
-    detect_source,
-    get_analytics_snapshot,
-    get_chatgpt_openapi_spec,
-    record_event,
-    render_analytics_html,
-)
+from src.analytics import detect_source, get_analytics_snapshot, get_chatgpt_openapi_spec, record_event, render_analytics_html
 from src.google_slides_engine import generate_google_slides_batch_requests
 from src.mcp_protocol import MCP_PROTOCOL_VERSION, get_mcp_tools_catalog, handle_mcp_jsonrpc
 from src.memo_transformer import (
-    audit_deck_readiness,
-    generate_executive_brief,
-    get_executive_presets,
-    get_welcome_greeting,
-    remix_or_update_slide,
-    transform_memo_to_slide_spec,
+    audit_deck_readiness, generate_executive_brief, get_executive_presets,
+    get_welcome_greeting, remix_or_update_slide, transform_memo_to_slide_spec,
 )
 from src.models import (
-    DESIGN_STYLE_PRESETS,
-    PRIMARY_THEMES,
-    DataImportRequest,
-    GeneratePptxRequest,
-    GoogleSlidesExportRequest,
-    MemoTransformRequest,
-    SlideRemixRequest,
+    DESIGN_STYLE_PRESETS, PRIMARY_THEMES, DataImportRequest,
+    GeneratePptxRequest, GoogleSlidesExportRequest, MemoTransformRequest, SlideRemixRequest,
 )
 from src.oauth_pkce import OAuthAndQuotaStore
 from src.pptx_engine import build_pptx_bytes, generate_editable_pptx, get_cached_pptx
@@ -53,17 +39,35 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 _OPENAI_CHALLENGE_STATE: dict[str, str] = {
     "token": os.environ.get("OPENAI_APPS_CHALLENGE", "WCjMPRQErs6vhNqMtbCP6eRJZFwPdr2jDO8qY4ogHMQ").strip()
 }
+_SECURITY_HEADERS: dict[str, str] = {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Content-Security-Policy": "base-uri 'self'; object-src 'none'; frame-ancestors 'none'",
+}
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="DeckForge MCP",
-        version="1.0.0",
+        title="DeckForge MCP", version="1.0.0",
         description="Executive Presentation & Slide Deck Studio",
-        docs_url="/openapi-docs",
-        redoc_url=None,
+        docs_url="/openapi-docs", redoc_url=None,
     )
     store = OAuthAndQuotaStore(base_url=f"http://localhost:{PORT}")
+
+    @app.middleware("http")
+    async def security_headers_and_body_cap(request: Request, call_next: Any) -> Response:
+        cl = request.headers.get("content-length")
+        if cl and cl.isdigit() and int(cl) > 5_000_000:
+            resp: Response = JSONResponse(status_code=413, content={"error": "Payload too large"})
+        else:
+            resp = await call_next(request)
+        for hk, hv in _SECURITY_HEADERS.items():
+            resp.headers.setdefault(hk, hv)
+        return resp
 
     @app.get("/", response_class=HTMLResponse)
     async def index_studio(request: Request) -> HTMLResponse:
@@ -108,6 +112,10 @@ def create_app() -> FastAPI:
 
     @app.post("/api/admin/openai-challenge")
     async def set_openai_challenge(request: Request) -> JSONResponse:
+        admin_secret = os.environ.get("ADMIN_API_SECRET", "").strip()
+        provided = request.headers.get("x-admin-secret", "").strip()
+        if not admin_secret or not provided or not hmac.compare_digest(provided, admin_secret):
+            return JSONResponse(status_code=403, content={"error": "Forbidden"})
         raw = await request.json()
         token = str(raw.get("token", "")).strip()
         _OPENAI_CHALLENGE_STATE["token"] = token

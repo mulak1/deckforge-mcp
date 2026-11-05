@@ -7,6 +7,7 @@ and anonymized event metadata (timestamp, platform, tool name, theme/layout).
 
 from __future__ import annotations
 
+import html
 from collections import deque
 from datetime import datetime, timezone
 from typing import Any, Dict
@@ -81,10 +82,10 @@ def record_event(
     _RECENT_EVENTS.appendleft(
         {
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-            "source": source,
-            "event": event_type,
-            "tool": tool_name,
-            "detail": detail or "-",
+            "source": str(source)[:40],
+            "event": str(event_type)[:40],
+            "tool": str(tool_name or "-")[:80],
+            "detail": str(detail or "-")[:80],
         }
     )
 
@@ -106,9 +107,10 @@ def render_analytics_html() -> str:
     c = snap["counters"]
     src = snap["by_source"]
     tools = snap["by_tool"]
+    esc = lambda v: html.escape(str(v), quote=True)
     rows = "".join(
-        f"<tr><td>{ev['timestamp']}</td><td><strong>{ev['source']}</strong></td>"
-        f"<td>{ev['event']}</td><td><code>{ev['tool']}</code></td><td>{ev['detail']}</td></tr>"
+        f"<tr><td>{esc(ev['timestamp'])}</td><td><strong>{esc(ev['source'])}</strong></td>"
+        f"<td>{esc(ev['event'])}</td><td><code>{esc(ev['tool'])}</code></td><td>{esc(ev['detail'])}</td></tr>"
         for ev in snap["recent_events"]
     ) or '<tr><td colspan="5" style="color:#94a3b8;">No events recorded yet in this container session.</td></tr>'
 
