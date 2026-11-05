@@ -321,8 +321,17 @@ def build_pptx_bytes(deck: DeckSpec) -> bytes:
     return buf.getvalue()
 
 
+_PPTX_DOWNLOAD_CACHE: Dict[str, bytes] = {}
+PUBLIC_BASE_URL = "https://deckforge-mcp-production.up.railway.app"
+
+
+def get_cached_pptx(filename: str) -> bytes | None:
+    """Retrieves recently generated .pptx bytes by filename from bounded memory cache."""
+    return _PPTX_DOWNLOAD_CACHE.get(filename)
+
+
 def generate_editable_pptx(deck_spec: DeckSpec | Dict[str, Any]) -> Dict[str, Any]:
-    """Validates DeckSpec and returns base64 .pptx archive, checksum, and OpenXML manifest."""
+    """Validates DeckSpec and returns base64 .pptx archive, checksum, download URL, and OpenXML manifest."""
     parsed = deck_spec if isinstance(deck_spec, DeckSpec) else DeckSpec.model_validate(deck_spec)
     raw_bytes = build_pptx_bytes(parsed)
     sha256_hash = hashlib.sha256(raw_bytes).hexdigest()
@@ -332,9 +341,14 @@ def generate_editable_pptx(deck_spec: DeckSpec | Dict[str, Any]) -> Dict[str, An
         archive_entries = sorted(zf.namelist())
 
     safe_slug = "".join(c if c.isalnum() else "_" for c in parsed.title.lower()).strip("_")[:48]
+    filename = f"{safe_slug or 'deckforge_executive_deck'}.pptx"
+    if len(_PPTX_DOWNLOAD_CACHE) >= 30:
+        _PPTX_DOWNLOAD_CACHE.pop(next(iter(_PPTX_DOWNLOAD_CACHE)), None)
+    _PPTX_DOWNLOAD_CACHE[filename] = raw_bytes
     return {
         "status": "success",
-        "filename": f"{safe_slug or 'deckforge_executive_deck'}.pptx",
+        "filename": filename,
+        "download_url": f"{PUBLIC_BASE_URL}/downloads/{filename}",
         "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         "slide_count": len(parsed.slides),
         "file_size_bytes": len(raw_bytes),

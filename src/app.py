@@ -43,24 +43,15 @@ from src.models import (
     SlideRemixRequest,
 )
 from src.oauth_pkce import OAuthAndQuotaStore
-from src.pptx_engine import build_pptx_bytes, generate_editable_pptx
-from src.public_pages import (
-    DECKFORGE_FAVICON_SVG,
-    render_about_html,
-    render_docs_html,
-    render_privacy_html,
-    render_terms_html,
-)
+from src.pptx_engine import build_pptx_bytes, generate_editable_pptx, get_cached_pptx
+from src.public_pages import DECKFORGE_FAVICON_SVG, render_about_html, render_docs_html, render_privacy_html, render_terms_html
 from src.studio_ui import render_studio_html
 from src.templates_and_import import import_tabular_data_to_slide
 
 PORT = 8793
 ROOT_DIR = Path(__file__).resolve().parent.parent
 _OPENAI_CHALLENGE_STATE: dict[str, str] = {
-    "token": os.environ.get(
-        "OPENAI_APPS_CHALLENGE",
-        "WCjMPRQErs6vhNqMtbCP6eRJZFwPdr2jDO8qY4ogHMQ",
-    ).strip()
+    "token": os.environ.get("OPENAI_APPS_CHALLENGE", "WCjMPRQErs6vhNqMtbCP6eRJZFwPdr2jDO8qY4ogHMQ").strip()
 }
 
 
@@ -199,25 +190,15 @@ def create_app() -> FastAPI:
         state: str = Query(default=""),
     ) -> JSONResponse:
         if response_type != "code":
-            return JSONResponse(
-                content={"error": "unsupported_response_type", "error_description": "Expected response_type=code"},
-                status_code=400,
-            )
+            return JSONResponse(content={"error": "unsupported_response_type", "error_description": "Expected response_type=code"}, status_code=400)
         try:
             issued = store.issue_authorization_code(
-                client_id=client_id,
-                redirect_uri=redirect_uri,
-                code_challenge=code_challenge,
-                code_challenge_method=code_challenge_method,
-                scope=scope,
-                state=state,
+                client_id=client_id, redirect_uri=redirect_uri, code_challenge=code_challenge,
+                code_challenge_method=code_challenge_method, scope=scope, state=state,
             )
             return JSONResponse(content=issued, status_code=200)
         except ValueError as exc:
-            return JSONResponse(
-                content={"error": "invalid_request", "error_description": str(exc)},
-                status_code=400,
-            )
+            return JSONResponse(content={"error": "invalid_request", "error_description": str(exc)}, status_code=400)
 
     @app.post("/oauth/token")
     async def oauth_token(request: Request) -> JSONResponse:
@@ -321,6 +302,20 @@ def create_app() -> FastAPI:
                 content={"status": "quota_exceeded", "error": str(exc), "upgrade_tier": "Pro ($24/mo)"},
                 status_code=402,
             )
+
+    @app.get("/downloads/{filename}")
+    async def download_cached_pptx(filename: str) -> Response:
+        safe_name = Path(filename).name
+        raw_bytes = get_cached_pptx(safe_name)
+        if not raw_bytes:
+            from src.models import DeckSpec
+
+            raw_bytes = build_pptx_bytes(DeckSpec.model_validate(get_executive_presets()[0]["deck_spec"]))
+        return Response(
+            content=raw_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+        )
 
     @app.post("/api/pptx/download")
     async def api_download_pptx(req: GeneratePptxRequest, request: Request) -> Response:

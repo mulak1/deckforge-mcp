@@ -150,8 +150,8 @@ def render_studio_html() -> str:
           <label for="rawMemo" style="margin:0;">Paste Your Meeting Notes or Numbers</label>
           <span class="thumb-badge" id="liveSlideEstimateBadge">~6 slides · 4 metrics detected</span>
         </div>
-        <textarea id="rawMemo" oninput="updateLiveSlideEstimate()" placeholder="Paste your bullet points, key metrics (like Revenue: $14.2M +35% YoY), quarterly numbers (Q1: $10M, Q2: $12M...), and next steps..."></textarea>
-        <button class="btn-primary" style="width:100%;margin-top:8px;padding:9px 12px;font-size:13px;" onclick="runTransformMemo()">Build / Update My Slide Deck</button>
+        <textarea id="rawMemo" oninput="updateLiveSlideEstimate()" onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){{event.preventDefault();runTransformMemo();}}" placeholder="Paste your bullet points, key metrics (like Revenue: $14.2M +35% YoY), quarterly numbers (Q1: $10M, Q2: $12M...), and next steps..."></textarea>
+        <button class="btn-primary" style="width:100%;margin-top:8px;padding:9px 12px;font-size:13px;" onclick="runTransformMemo()">Build / Update My Slide Deck (⌘↵)</button>
 
         <details id="customizeThemeDrawer" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
           <summary style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--muted);">
@@ -267,12 +267,16 @@ def render_studio_html() -> str:
           <span id="bottomSlideProgressPill" class="thumb-badge" style="font-size:12px;padding:5px 12px;">Slide 1 of 6 · Use ← / → arrow keys</span>
           <button class="btn-secondary" onclick="stepSlide(1)">Next Slide →</button>
         </div>
-        <div class="notes-box" id="speakerNotesBox">Talking points for this slide will appear here.</div>
+        <div class="notes-box" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <div id="speakerNotesBox">Talking points for this slide will appear here.</div>
+          <button class="btn-secondary" id="btnCopyTalkingPoints" style="padding:4px 10px;font-size:11px;white-space:nowrap;" onclick="copyActiveTalkingPoints()">📋 Copy Talking Points</button>
+        </div>
 
         <div class="editor-panel" id="slideEditorPanel">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
             <h2 style="margin-bottom:0;color:var(--accent);">Edit This Slide (8 Layouts &amp; 4 Chart Types)</h2>
             <div style="display:flex;gap:8px;align-items:center;">
+              <button class="btn-secondary" id="btnTightenBullets" onclick="tightenActiveSlideBullets()">✂ Tighten Bullets</button>
               <button class="btn-emerald" id="btnMagicPolish" onclick="polishActiveSlide()">✨ Tighten &amp; Polish Wording</button>
               <button class="btn-primary" id="btnApplySlideEdits" onclick="applySlideEdits()">Save Slide Changes</button>
             </div>

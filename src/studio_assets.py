@@ -89,8 +89,8 @@ STUDIO_CSS = """
     .present-stage svg { max-height:78vh; width:auto; max-width:100%; }
     .present-notes { max-width:1100px; width:100%; margin:0 auto; padding:10px 16px; background:#0f172a; border-left:4px solid var(--accent); border-radius:8px; font-size:14px; color:#e2e8f0; }
     @media (max-width:1180px) { .studio-grid, .editor-grid, .welcome-steps { grid-template-columns:1fr; } }
+    @media print { .topbar,.welcome-banner,.theme-bar,.pane-left,.pane-right,.stage-toolbar,.quick-layout-bar,.bottom-slide-nav,.editor-panel { display:none !important; } .studio-grid { display:block !important; } .pane-center { background:#fff !important; padding:0 !important; } }
 """
-
 STUDIO_JS = """
     let PRESETS = [], THEMES = {}, DESIGN_STYLES = {}, CURRENT_DECK = null, CURRENT_SVGS = [];
     let ACTIVE_SLIDE_IDX = 0, ACTIVE_VIEW_MODE = 'stage', ACTIVE_THEME_KEY = 'boardroom_navy', ACTIVE_PRESET_IDX = 0;

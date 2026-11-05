@@ -258,26 +258,31 @@ STUDIO_EXT_JS = """
       if (!CURRENT_DECK) return;
       let rawText = document.getElementById('rawTabularData').value.trim();
       if (!rawText) { pasteSampleSheetData(); rawText = document.getElementById('rawTabularData').value.trim(); }
-      const res = await fetch('/api/tools/import-data', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          raw_tabular_text: rawText,
-          target_mode: targetMode,
-          chart_type: document.getElementById('importChartType').value,
-          chart_unit: document.getElementById('importChartUnit').value || '$M',
-          slide_title: document.getElementById('importSlideTitle').value || 'Imported Performance Data',
-          deck_spec: CURRENT_DECK
-        })
-      });
-      const data = await res.json();
+      const body = {
+        raw_tabular_text: rawText, target_mode: targetMode, chart_type: document.getElementById('importChartType').value,
+        chart_unit: document.getElementById('importChartUnit').value || '$M',
+        slide_title: document.getElementById('importSlideTitle').value || 'Imported Performance Data', deck_spec: CURRENT_DECK
+      };
+      const data = await (await fetch('/api/tools/import-data', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) })).json();
       if (data.deck_spec) {
-        CURRENT_DECK = data.deck_spec;
-        ACTIVE_SLIDE_IDX = CURRENT_DECK.slides.length - 1;
+        CURRENT_DECK = data.deck_spec; ACTIVE_SLIDE_IDX = CURRENT_DECK.slides.length - 1;
         await renderDeckPreview(CURRENT_DECK, false);
-        document.getElementById('jsonInspector').textContent = JSON.stringify({
-          imported_mode: data.target_mode, rows_imported: data.rows_imported, slide_number: ACTIVE_SLIDE_IDX + 1
-        }, null, 2);
+        document.getElementById('jsonInspector').textContent = JSON.stringify({ imported_mode: data.target_mode, rows_imported: data.rows_imported, slide_number: ACTIVE_SLIDE_IDX + 1 }, null, 2);
       }
+    }
+    async function tightenActiveSlideBullets() {
+      if (!CURRENT_DECK || !CURRENT_DECK.slides[ACTIVE_SLIDE_IDX]) return;
+      const trimLine = (s) => String(s || '').replace(/^(in order to|it is important to note that|we should focus on|currently we are)\\s+/i, '').trim().slice(0, 78);
+      const cur = CURRENT_DECK.slides[ACTIVE_SLIDE_IDX];
+      const tightened = { ...cur, action_title: trimLine(cur.action_title) || cur.action_title, left_bullets: (cur.left_bullets || []).map(trimLine), right_bullets: (cur.right_bullets || []).map(trimLine) };
+      CURRENT_DECK = { ...CURRENT_DECK, slides: CURRENT_DECK.slides.map((s, i) => i === ACTIVE_SLIDE_IDX ? tightened : s) };
+      await renderDeckPreview(CURRENT_DECK, false);
+    }
+    function copyActiveTalkingPoints() {
+      const slideObj = (CURRENT_DECK && CURRENT_DECK.slides && CURRENT_DECK.slides[ACTIVE_SLIDE_IDX]) || {};
+      navigator.clipboard.writeText(slideObj.speaker_notes || '');
+      const btn = document.getElementById('btnCopyTalkingPoints');
+      if (btn) { const orig = btn.textContent; btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = orig; }, 1400); }
     }
     async function polishActiveSlide() {
       if (!CURRENT_DECK || !CURRENT_DECK.slides[ACTIVE_SLIDE_IDX]) return;
@@ -352,21 +357,15 @@ STUDIO_EXT_JS = """
     async function refreshQuota() {
       const sel = document.getElementById('apiKeySelect');
       if (window.location.search.includes('pro_activated=1') || localStorage.getItem('df_pro_active') === '1') {
-        localStorage.setItem('df_pro_active', '1');
-        if (sel) sel.value = 'df_pro_enterprise';
-        const hLink = document.getElementById('headerUpgradeLink');
-        if (hLink) hLink.textContent = '✓ Pro Plan Active ($49.99)';
-        const cLink = document.getElementById('cardUpgradeLink');
-        if (cLink) cLink.textContent = '✓ Pro Plan Active ($49.99)';
+        localStorage.setItem('df_pro_active', '1'); if (sel) sel.value = 'df_pro_enterprise';
+        ['headerUpgradeLink', 'cardUpgradeLink'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '✓ Pro Plan Active ($49.99)'; });
       }
-      const key = sel ? sel.value : 'df_free_demo';
-      const q = await (await fetch('/api/quota?api_key=' + encodeURIComponent(key))).json();
+      const q = await (await fetch('/api/quota?api_key=' + encodeURIComponent(sel ? sel.value : 'df_free_demo'))).json();
       document.getElementById('quotaBox').innerHTML = `<div><strong>Plan:</strong> ${q.price_label}</div><div><strong>Presentations Built:</strong> ${q.decks_used} of ${q.tier === 'pro' ? 'Unlimited' : q.decks_limit} this month</div>`;
     }
     async function downloadPptxFile() {
       if (!CURRENT_DECK) return;
-      const apiKey = document.getElementById('apiKeySelect').value;
-      const res = await fetch('/api/pptx/download', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({deck_spec: CURRENT_DECK, api_key: apiKey}) });
+      const res = await fetch('/api/pptx/download', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({deck_spec: CURRENT_DECK, api_key: document.getElementById('apiKeySelect').value}) });
       if (!res.ok) { document.getElementById('jsonInspector').textContent = JSON.stringify(await res.json(), null, 2); await refreshQuota(); return; }
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement('a'); a.href = url; a.download = (CURRENT_DECK.title.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'deckforge') + '.pptx';
@@ -389,8 +388,7 @@ STUDIO_EXT_JS = """
     async function runLivePkceHandshake() {
       const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk', challenge = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', redirectUri = 'http://localhost:8793/callback';
       const regRes = await (await fetch('/oauth/register', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ client_name: 'Presentation Studio Client', redirect_uris: [redirectUri] }) })).json();
-      const authUrl = `/oauth/authorize?response_type=code&client_id=${encodeURIComponent(regRes.client_id)}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${encodeURIComponent(challenge)}&code_challenge_method=S256&state=studio_s256_verified`;
-      const authRes = await (await fetch(authUrl)).json();
+      const authRes = await (await fetch(`/oauth/authorize?response_type=code&client_id=${encodeURIComponent(regRes.client_id)}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${encodeURIComponent(challenge)}&code_challenge_method=S256&state=studio_s256_verified`)).json();
       const tokenRes = await (await fetch('/oauth/token', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ grant_type: 'authorization_code', code: authRes.code, client_id: regRes.client_id, redirect_uri: redirectUri, code_verifier: verifier }) })).json();
       document.getElementById('jsonInspector').textContent = JSON.stringify({ connection_status: 'VERIFIED', step1_register: regRes, step2_authorize: { code: authRes.code, state: authRes.state }, step3_token: tokenRes }, null, 2);
     }

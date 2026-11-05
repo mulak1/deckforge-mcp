@@ -251,3 +251,104 @@ def test_studio_ui_simplification_and_intuitiveness_iteration():
     ]:
         assert marker in html, f"Missing UI simplification marker: {marker}"
 
+
+def test_p0_slim_tools_list_payload_under_5kb_and_fully_typed():
+    """Verifies P0 #1: tools/list JSON response is < 5 KB with explicit type & description and zero $ref/anyOf."""
+    import json as _json
+
+    client = TestClient(create_app())
+    resp = client.post("/mcp", json={"jsonrpc": "2.0", "id": 10, "method": "tools/list", "params": {}})
+    assert resp.status_code == 200
+    raw_bytes = len(resp.content)
+    assert raw_bytes < 5000, f"Expected tools/list < 5000 bytes, got {raw_bytes} bytes"
+    raw_text = resp.text
+    assert '"$ref"' not in raw_text
+    assert '"anyOf"' not in raw_text
+    for tool in resp.json()["result"]["tools"]:
+        props = tool["inputSchema"].get("properties", {})
+        for pname, pval in props.items():
+            assert "type" in pval, f"Missing type on {tool['name']}.{pname}"
+            assert "description" in pval, f"Missing description on {tool['name']}.{pname}"
+
+
+def test_p0_forgiving_cold_call_llm_input_normalizer():
+    """Verifies P0 #2: Cold-call LLM aliases (deck_title, title, layout, bullet_points) normalize cleanly with isError=False."""
+    client = TestClient(create_app())
+    cold_spec = {
+        "deck_title": "Q3 Board Update",
+        "slides": [
+            {
+                "slide_number": 1,
+                "title": "Executive Summary",
+                "layout": "title_hero",
+                "bullet_points": ["ARR grew 142% YoY", "NRR reached 124%"],
+            },
+            {
+                "title": "Key Operating Metrics",
+                "layout": "kpi",
+                "bullets": ["Gross margin expanded to 81.2%", "CAC payback improved to 9.5 mos"],
+            },
+        ],
+    }
+    for tool_name in ("generate_editable_pptx", "generate_google_slides_batch_requests", "remix_or_update_slide"):
+        resp = client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 20,
+                "method": "tools/call",
+                "params": {"name": tool_name, "arguments": {"deck_spec": cold_spec}},
+            },
+        )
+        assert resp.status_code == 200
+        result = resp.json()["result"]
+        assert result["isError"] is False, f"{tool_name} failed on cold LLM input: {result}"
+
+
+def test_p0_clickable_ephemeral_https_pptx_download_link():
+    """Verifies P0 #3: generate_editable_pptx returns a clickable /downloads/<filename>.pptx link that serves valid .pptx bytes."""
+    client = TestClient(create_app())
+    resp = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": 30,
+            "method": "tools/call",
+            "params": {
+                "name": "generate_editable_pptx",
+                "arguments": {
+                    "deck_spec": {
+                        "deck_title": "Q3 Executive Briefing",
+                        "slides": [{"slide_number": 1, "title": "Headline Overview", "layout": "title_hero"}],
+                    }
+                },
+            },
+        },
+    )
+    assert resp.status_code == 200
+    res = resp.json()["result"]
+    assert res["isError"] is False
+    text_block = res["content"][0]["text"]
+    assert "https://deckforge-mcp-production.up.railway.app/downloads/" in text_block
+    dl_url = res["structuredContent"]["download_url"]
+    dl_path = "/downloads/" + dl_url.split("/downloads/")[-1]
+    dl_resp = client.get(dl_path)
+    assert dl_resp.status_code == 200
+    assert dl_resp.headers["content-type"] == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    assert dl_resp.content[:4] == b"PK\x03\x04"
+
+
+def test_p0_zero_bloat_studio_ux_polish_markers():
+    """Verifies P0 #4: Studio UI includes 1-click Tighten Wording, Copy Talking Points, Cmd+Enter shortcut, and @media print."""
+    html = render_studio_html()
+    for marker in [
+        "btnTightenBullets",
+        "tightenActiveSlideBullets()",
+        "btnCopyTalkingPoints",
+        "copyActiveTalkingPoints()",
+        "@media print",
+        "⌘↵",
+    ]:
+        assert marker in html, f"Missing P0 Studio UX marker: {marker}"
+
+
