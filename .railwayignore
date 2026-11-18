@@ -1,6 +1,12 @@
+.git/
+.venv/
+venv/
 .pytest_cache/
 __pycache__/
 *.pyc
 .coverage
 .taste-skill/
-tests/
+.agents/
+*.db
+*.db-wal
+*.db-shm
