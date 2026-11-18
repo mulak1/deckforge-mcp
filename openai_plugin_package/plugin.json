@@ -49,10 +49,7 @@
         "composerIcon": "./assets/icon.png",
         "composerIconDark": "./assets/icon-dark.png",
         "logo": "./assets/logo.png",
-        "logoDark": "./assets/logo-dark.png",
-        "screenshots": [
-          "./assets/screenshot.png"
-        ]
+        "logoDark": "./assets/logo-dark.png"
       },
       "onboardingSkill": "./skills/deckforge/SKILL.md",
       "review": {

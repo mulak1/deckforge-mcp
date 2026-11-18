@@ -485,7 +485,9 @@ def test_mcp_monetization_no_free_pro_default_and_privacy_disclosures(monkeypatc
     zip_resp = client.get("/openai-plugin.zip")
     assert zip_resp.status_code == 200
     with zipfile.ZipFile(io.BytesIO(zip_resp.content), "r") as zf:
-        assert json.loads(zf.read("plugin.json").decode("utf-8"))["version"] == "1.0.2"
+        archived_plugin = json.loads(zf.read("plugin.json").decode("utf-8"))
+        assert archived_plugin["version"] == "1.0.2"
+        assert "screenshots" not in archived_plugin["extensions"]["com.openai"]["interface"]
 
 
 
