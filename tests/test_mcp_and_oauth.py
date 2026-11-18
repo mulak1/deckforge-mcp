@@ -424,8 +424,10 @@ def test_mcp_apps_ui_resource_and_multi_view_studio():
     assert res_bad.status_code == 200 and "error" in res_bad.json()
 
 
-def test_mcp_monetization_no_free_pro_default_and_privacy_disclosures():
+def test_mcp_monetization_no_free_pro_default_and_privacy_disclosures(monkeypatch):
     """Verifies [E-27]/[E-35] monetization fixes, HMAC Pro key tamper resistance, and OpenAI /privacy disclosures."""
+    import io
+    import zipfile
     from src.oauth_pkce import issue_pro_api_key
 
     app = create_app()
@@ -447,6 +449,12 @@ def test_mcp_monetization_no_free_pro_default_and_privacy_disclosures():
     tampered_key = signed_key[:-1] + ("0" if signed_key[-1] != "0" else "1")
     assert client.get("/api/quota", params={"api_key": tampered_key}).json()["tier"] == "free"
 
+    # In production runtime, static test fixture key df_pro_enterprise is rejected while HMAC Pro key is accepted
+    monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
+    assert client.get("/api/quota", params={"api_key": "df_pro_enterprise"}).json()["tier"] == "free"
+    assert client.get("/api/quota", params={"api_key": signed_key}).json()["tier"] == "pro"
+    monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
+
     # Anonymous POST /mcp generate_editable_pptx uses free tier (3 decks/mo) and blocks 4th call even with rotating forged api_key
     headers = {"X-Client-Id": "df_free_anon_tester"}
     for i in range(3):
@@ -464,6 +472,22 @@ def test_mcp_monetization_no_free_pro_default_and_privacy_disclosures():
     assert r4.status_code == 200 and r4.json()["result"]["isError"] is True
     err_msg = r4.json()["result"]["content"][0]["text"]
     assert "df_pro_enterprise" not in err_msg and "buy.stripe.com" in err_msg
+
+    # Verify generate_editable_pptx inputSchema.properties.api_key.description matches v1.0.0 byte-for-byte with zero secret leak
+    tools_cat = client.post("/mcp", json={"jsonrpc": "2.0", "id": 805, "method": "tools/list", "params": {}}).json()["result"]["tools"]
+    pptx_tool = next(t for t in tools_cat if t["name"] == "generate_editable_pptx")
+    assert pptx_tool["inputSchema"]["properties"]["api_key"]["description"] == "Optional account plan key."
+    assert "df_pro_enterprise" not in json.dumps(tools_cat)
+    for tool_def in tools_cat:
+        for prop_key in tool_def["inputSchema"].get("properties", {}):
+            assert prop_key in priv_html
+
+    zip_resp = client.get("/openai-plugin.zip")
+    assert zip_resp.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(zip_resp.content), "r") as zf:
+        assert json.loads(zf.read("plugin.json").decode("utf-8"))["version"] == "1.0.2"
+
+
 
 
 
