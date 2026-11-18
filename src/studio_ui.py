@@ -345,11 +345,8 @@ def render_studio_html() -> str:
 
       <h2>Your Account &amp; Monthly Plan</h2>
       <div class="inspector-card">
-        <label for="apiKeySelect" style="margin-top:0;">Active Membership Plan</label>
-        <select id="apiKeySelect" onchange="refreshQuota()">
-          <option value="df_free_demo">Starter Plan — 3 Free Decks / Month (All Layouts &amp; Styles Unlocked)</option>
-          <option value="df_pro_enterprise">Unlimited Pro Plan ($49.99) — Unlimited Decks</option>
-        </select>
+        <label for="apiKeySelect" style="margin-top:0;">Pro API Key (Optional — 3 Free Decks/Mo Included)</label>
+        <input id="apiKeySelect" type="password" value="" placeholder="Enter Pro API key (optional)" onchange="refreshQuota()" />
         <div id="quotaBox" style="margin-top:8px;color:#cbd5e1;">Loading plan details...</div>
         <a id="cardUpgradeLink" class="btn-primary" href="/upgrade" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;margin-top:8px;">Upgrade to Unlimited Pro ($49.99) →</a>
       </div>

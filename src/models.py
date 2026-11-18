@@ -229,7 +229,7 @@ class GeneratePptxRequest(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     deck_spec: DeckSpec = Field(..., description="Structured presentation specification containing title, theme, and slides")
-    api_key: str = Field(default="df_free_demo", min_length=3, max_length=120, description="Optional account plan key (works immediately without setup; use default or df_pro_enterprise)")
+    api_key: str = Field(default="df_free_demo", min_length=3, max_length=120, description="Optional DeckForge Pro API key for unlimited monthly PPTX deck exports.")
 
 
 class GoogleSlidesExportRequest(BaseModel):

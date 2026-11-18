@@ -28,7 +28,7 @@ from src.models import (
     DESIGN_STYLE_PRESETS, PRIMARY_THEMES, DataImportRequest,
     GeneratePptxRequest, GoogleSlidesExportRequest, MemoTransformRequest, SlideRemixRequest,
 )
-from src.oauth_pkce import OAuthAndQuotaStore
+from src.oauth_pkce import OAuthAndQuotaStore, _is_prod_runtime
 from src.pptx_engine import build_pptx_bytes, generate_editable_pptx, get_cached_pptx
 from src.public_pages import DECKFORGE_FAVICON_SVG, render_about_html, render_docs_html, render_privacy_html, render_terms_html
 from src.studio_ui import render_studio_html
@@ -72,7 +72,8 @@ def create_app() -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     async def index_studio(request: Request) -> HTMLResponse:
         src = detect_source(request.headers.get("user-agent", ""), path="/")
-        if "pro_activated=1" in str(request.url.query):
+        sid = request.query_params.get("session_id", "").strip()
+        if request.query_params.get("pro_activated") == "1" and sid.startswith("cs_"):
             record_event(event_type="pro_unlock", source=src, tool_name="studio", detail="Checkout Redirect")
         else:
             record_event(event_type="page_view", source=src, tool_name="studio", detail="GET /")
@@ -274,7 +275,20 @@ def create_app() -> FastAPI:
         method = str(payload.get("method", "")) if isinstance(payload, dict) else ""
         if isinstance(payload, dict) and payload.get("id") is None and method.startswith("notifications/"):
             return Response(status_code=202)
-        response_data = handle_mcp_jsonrpc(payload, store, user_agent=request.headers.get("user-agent", ""))
+        forwarded = (request.headers.get("x-forwarded-for") or "").split(",")[-1].strip()
+        caller_ip = request.headers.get("cf-connecting-ip") or forwarded or (request.client.host if request.client else "demo")
+        hdr_key = (request.headers.get("x-api-key") or request.headers.get("x-client-id") or "").strip()
+        caller_key = (
+            hdr_key
+            if (hdr_key and (store.is_valid_pro_key(hdr_key) or not _is_prod_runtime()))
+            else f"df_free_{caller_ip}"
+        )
+        response_data = handle_mcp_jsonrpc(
+            payload,
+            store,
+            user_agent=request.headers.get("user-agent", ""),
+            caller_key=caller_key,
+        )
         return JSONResponse(content=response_data, status_code=200)
 
     # --- Studio REST Endpoints ---

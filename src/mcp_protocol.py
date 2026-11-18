@@ -222,6 +222,7 @@ def _execute_mcp_tool(
     tool_name: str,
     arguments: Dict[str, Any],
     quota_store: OAuthAndQuotaStore,
+    caller_key: str = "df_free_demo",
 ) -> Dict[str, Any]:
     if tool_name == "transform_memo_to_slide_spec":
         req = MemoTransformRequest.model_validate(arguments)
@@ -239,10 +240,10 @@ def _execute_mcp_tool(
         }
 
     if tool_name == "generate_editable_pptx":
-        api_key = str(arguments.get("api_key") or "df_pro_enterprise")
+        raw_arg_key = str(arguments.get("api_key") or "").strip()
         deck_raw = normalize_cold_deck_spec(arguments.get("deck_spec", arguments))
         deck = DeckSpec.model_validate(deck_raw)
-        quota_info = quota_store.consume_deck_quota(api_key)
+        quota_info = quota_store.consume_deck_quota(raw_arg_key, caller_id=caller_key)
         pptx_out = generate_editable_pptx(deck)
         enriched = {**pptx_out, "quota": quota_info}
         summary = (
@@ -280,6 +281,7 @@ def handle_mcp_jsonrpc(
     payload: Dict[str, Any],
     quota_store: OAuthAndQuotaStore,
     user_agent: str = "",
+    caller_key: str = "df_free_demo",
 ) -> Dict[str, Any]:
     """Processes a single request for the /mcp endpoint."""
     req_id = payload.get("id")
@@ -331,7 +333,7 @@ def handle_mcp_jsonrpc(
         tool_name = str(params.get("name", ""))
         arguments = params.get("arguments") or {}
         try:
-            call_result = _execute_mcp_tool(tool_name, arguments, quota_store)
+            call_result = _execute_mcp_tool(tool_name, arguments, quota_store, caller_key=caller_key)
             src = detect_source(user_agent, path="/mcp")
             record_event(event_type="tool_call", source=src, tool_name=tool_name, detail="mcp tools/call")
             return {"jsonrpc": "2.0", "id": req_id, "result": call_result}

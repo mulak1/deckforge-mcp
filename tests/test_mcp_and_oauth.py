@@ -424,3 +424,47 @@ def test_mcp_apps_ui_resource_and_multi_view_studio():
     assert res_bad.status_code == 200 and "error" in res_bad.json()
 
 
+def test_mcp_monetization_no_free_pro_default_and_privacy_disclosures():
+    """Verifies [E-27]/[E-35] monetization fixes, HMAC Pro key tamper resistance, and OpenAI /privacy disclosures."""
+    from src.oauth_pkce import issue_pro_api_key
+
+    app = create_app()
+    client = TestClient(app)
+
+    priv_html = client.get("/privacy").text
+    for required_term in (
+        "transform_memo_to_slide_spec", "remix_or_update_slide",
+        "generate_editable_pptx", "generate_google_slides_batch_requests",
+        "Purposes of Data Processing", "Recipients", "Data Retention", "User Controls",
+    ):
+        assert required_term in priv_html
+
+    # Forged prefixes and tampered 5-part HMAC keys stay on free tier
+    assert client.get("/api/quota", params={"api_key": "df_pro_forged_attacker"}).json()["tier"] == "free"
+    assert client.get("/api/quota", params={"api_key": "df_oauth_forged_attacker"}).json()["tier"] == "free"
+    signed_key = issue_pro_api_key("customer")
+    assert client.get("/api/quota", params={"api_key": signed_key}).json()["tier"] == "pro"
+    tampered_key = signed_key[:-1] + ("0" if signed_key[-1] != "0" else "1")
+    assert client.get("/api/quota", params={"api_key": tampered_key}).json()["tier"] == "free"
+
+    # Anonymous POST /mcp generate_editable_pptx uses free tier (3 decks/mo) and blocks 4th call even with rotating forged api_key
+    headers = {"X-Client-Id": "df_free_anon_tester"}
+    for i in range(3):
+        r = client.post(
+            "/mcp", headers=headers,
+            json={"jsonrpc": "2.0", "id": 800 + i, "method": "tools/call", "params": {"name": "generate_editable_pptx", "arguments": {"title": f"Board Update {i+1}", "api_key": f"forged_key_{i}"}}},
+        )
+        assert r.status_code == 200 and r.json()["result"]["isError"] is False
+        assert r.json()["result"]["structuredContent"]["quota"]["tier"] == "free"
+
+    r4 = client.post(
+        "/mcp", headers=headers,
+        json={"jsonrpc": "2.0", "id": 804, "method": "tools/call", "params": {"name": "generate_editable_pptx", "arguments": {"title": "Board Update 4", "api_key": "forged_key_4"}}},
+    )
+    assert r4.status_code == 200 and r4.json()["result"]["isError"] is True
+    err_msg = r4.json()["result"]["content"][0]["text"]
+    assert "df_pro_enterprise" not in err_msg and "buy.stripe.com" in err_msg
+
+
+
+

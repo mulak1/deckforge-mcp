@@ -356,16 +356,19 @@ STUDIO_EXT_JS = """
     }
     async function refreshQuota() {
       const sel = document.getElementById('apiKeySelect');
-      if (window.location.search.includes('pro_activated=1') || localStorage.getItem('df_pro_active') === '1') {
-        localStorage.setItem('df_pro_active', '1'); if (sel) sel.value = 'df_pro_enterprise';
+      const keyVal = (sel && sel.value ? sel.value.trim() : '') || localStorage.getItem('df_pro_key') || 'df_free_demo';
+      if (sel && !sel.value && keyVal !== 'df_free_demo') sel.value = keyVal;
+      const q = await (await fetch('/api/quota?api_key=' + encodeURIComponent(keyVal))).json();
+      if (q.tier === 'pro' && keyVal !== 'df_free_demo') {
+        localStorage.setItem('df_pro_key', keyVal);
         ['headerUpgradeLink', 'cardUpgradeLink'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '✓ Pro Plan Active ($49.99)'; });
       }
-      const q = await (await fetch('/api/quota?api_key=' + encodeURIComponent(sel ? sel.value : 'df_free_demo'))).json();
       document.getElementById('quotaBox').innerHTML = `<div><strong>Plan:</strong> ${q.price_label}</div><div><strong>Presentations Built:</strong> ${q.decks_used} of ${q.tier === 'pro' ? 'Unlimited' : q.decks_limit} this month</div>`;
     }
     async function downloadPptxFile() {
       if (!CURRENT_DECK) return;
-      const res = await fetch('/api/pptx/download', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({deck_spec: CURRENT_DECK, api_key: document.getElementById('apiKeySelect').value}) });
+      const keyVal = (document.getElementById('apiKeySelect').value || '').trim() || 'df_free_demo';
+      const res = await fetch('/api/pptx/download', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({deck_spec: CURRENT_DECK, api_key: keyVal}) });
       if (!res.ok) { document.getElementById('jsonInspector').textContent = JSON.stringify(await res.json(), null, 2); await refreshQuota(); return; }
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement('a'); a.href = url; a.download = (CURRENT_DECK.title.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'deckforge') + '.pptx';

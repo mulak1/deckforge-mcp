@@ -6,11 +6,53 @@ Supports Dynamic Client Registration, Authorization Code issuance, and S256 code
 from __future__ import annotations
 
 import base64
+from collections import OrderedDict
 import hashlib
+import hmac
+import os
 import secrets
 import time
 from dataclasses import dataclass, replace
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
+
+MAX_STORE_SIZE = 4096
+_PRO_KEY_SECRET = os.environ.get(
+    "DECKFORGE_PRO_SECRET",
+    "df-hmac-v1-pro-signing-secret-8f7e6d5c4b3a2918",
+).encode("utf-8")
+
+
+def _is_prod_runtime() -> bool:
+    return bool(
+        os.environ.get("RAILWAY_ENVIRONMENT", "").strip()
+        or os.environ.get("RAILWAY_PROJECT_ID", "").strip()
+        or os.environ.get("PUBLIC_BASE_URL", "").strip()
+    )
+
+
+def _bounded_put(store: "OrderedDict[str, Any]", key: str, value: Any) -> None:
+    if key in store:
+        store.move_to_end(key)
+    store[key] = value
+    while len(store) > MAX_STORE_SIZE:
+        store.popitem(last=False)
+
+
+def issue_pro_api_key(label: str = "pro") -> str:
+    """Mint an HMAC-SHA256 signed DeckForge Pro API key."""
+    nonce = secrets.token_hex(8)
+    mac = hmac.new(_PRO_KEY_SECRET, f"df_pro:{label}:{nonce}".encode("ascii"), hashlib.sha256).hexdigest()[:16]
+    return f"df_pro_{label}_{nonce}_{mac}"
+
+
+def verify_signed_pro_key(key: str) -> bool:
+    """Verify whether a df_pro_<label>_<nonce>_<mac> key carries a valid HMAC-SHA256 signature."""
+    parts = key.split("_")
+    if len(parts) != 5 or parts[0] != "df" or parts[1] != "pro":
+        return False
+    _, _, label, nonce, provided_mac = parts
+    expected_mac = hmac.new(_PRO_KEY_SECRET, f"df_pro:{label}:{nonce}".encode("ascii"), hashlib.sha256).hexdigest()[:16]
+    return hmac.compare_digest(provided_mac, expected_mac)
 
 
 @dataclass(frozen=True)
@@ -66,16 +108,25 @@ class OAuthAndQuotaStore:
                 created_at=time.time(),
             ),
         }
-        self._codes: Dict[str, AuthCodeRecord] = {}
-        self._tokens: Dict[str, Dict[str, Any]] = {}
-        self._quotas: Dict[str, QuotaAccount] = {
+        self._codes: "OrderedDict[str, AuthCodeRecord]" = OrderedDict()
+        self._tokens: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+        self._test_pro_keys: Set[str] = {
+            "df_pro_enterprise",
+            "df_pro_directory_reviewer_2026",
+        }
+        self._pro_keys: Set[str] = {
+            k.strip()
+            for k in os.environ.get("DECKFORGE_PRO_KEYS", "").split(",")
+            if k.strip()
+        }
+        self._quotas: "OrderedDict[str, QuotaAccount]" = OrderedDict({
             "df_free_demo": QuotaAccount(
                 api_key="df_free_demo", tier="free", decks_used=0, decks_limit=3
             ),
             "df_pro_enterprise": QuotaAccount(
                 api_key="df_pro_enterprise", tier="pro", decks_used=0, decks_limit=999999
             ),
-        }
+        })
 
     def discovery_metadata(self, base_url_override: str | None = None) -> Dict[str, Any]:
         issuer_base = (base_url_override or self.base_url).rstrip("/")
@@ -131,7 +182,7 @@ class OAuthAndQuotaStore:
             scope=scope or "mcp:tools deck:export",
             expires_at=time.time() + 600.0,
         )
-        self._codes = {**self._codes, code: rec}
+        _bounded_put(self._codes, code, rec)
         return {
             "code": code,
             "state": state,
@@ -160,7 +211,7 @@ class OAuthAndQuotaStore:
         if not secrets.compare_digest(expected, rec.code_challenge):
             raise ValueError("PKCE S256 verification failed: code_verifier does not match code_challenge.")
 
-        self._codes = {**self._codes, code: replace(rec, used=True)}
+        _bounded_put(self._codes, code, replace(rec, used=True))
         access_token = f"df_oauth_{secrets.token_urlsafe(24)}"
         refresh_token = f"df_refresh_{secrets.token_urlsafe(24)}"
         token_payload = {
@@ -170,21 +221,33 @@ class OAuthAndQuotaStore:
             "refresh_token": refresh_token,
             "scope": rec.scope,
         }
-        self._tokens = {**self._tokens, access_token: token_payload}
+        _bounded_put(self._tokens, access_token, token_payload)
         return token_payload
 
-    def get_quota_status(self, api_key: str) -> Dict[str, Any]:
-        key = (api_key or "df_free_demo").strip()
-        is_pro = key.startswith("df_pro_") or key.startswith("df_oauth_")
-        account = self._quotas.get(key)
-        if not account:
+    def is_valid_pro_key(self, api_key: str) -> bool:
+        key = (api_key or "").strip()
+        if not key:
+            return False
+        return (
+            key in self._pro_keys
+            or key in self._tokens
+            or verify_signed_pro_key(key)
+            or (not _is_prod_runtime() and key in self._test_pro_keys)
+        )
+
+    def get_quota_status(self, api_key: str, *, caller_id: str | None = None) -> Dict[str, Any]:
+        raw_key = (api_key or "").strip()
+        is_pro = self.is_valid_pro_key(raw_key)
+        bucket_key = raw_key if is_pro else ((caller_id or "").strip() or raw_key or "df_free_demo")
+        account = self._quotas.get(bucket_key)
+        if not account or (account.tier == "pro" and not is_pro):
             account = QuotaAccount(
-                api_key=key,
+                api_key=bucket_key,
                 tier="pro" if is_pro else "free",
                 decks_used=0,
                 decks_limit=999999 if is_pro else 3,
             )
-            self._quotas = {**self._quotas, key: account}
+            _bounded_put(self._quotas, bucket_key, account)
 
         remaining = max(0, account.decks_limit - account.decks_used)
         return {
@@ -197,15 +260,16 @@ class OAuthAndQuotaStore:
             "upgrade_url": "https://buy.stripe.com/9B67sL7pH3FR7W53fYfAc02",
         }
 
-    def consume_deck_quota(self, api_key: str) -> Dict[str, Any]:
-        status = self.get_quota_status(api_key)
+    def consume_deck_quota(self, api_key: str, *, caller_id: str | None = None) -> Dict[str, Any]:
+        status = self.get_quota_status(api_key, caller_id=caller_id)
         key = status["api_key"]
         account = self._quotas[key]
         if account.tier == "free" and account.decks_used >= account.decks_limit:
             raise PermissionError(
                 f"Free tier limit reached ({account.decks_limit}/{account.decks_limit} decks/mo). "
-                "Upgrade to DeckForge Pro tier ($24/mo) using key 'df_pro_enterprise' for unlimited PPTX & Google Slides generation."
+                "Upgrade to DeckForge Pro tier ($24/mo) at https://buy.stripe.com/9B67sL7pH3FR7W53fYfAc02 "
+                "and pass your Pro api_key for unlimited PPTX & Google Slides generation."
             )
         updated = replace(account, decks_used=account.decks_used + 1)
-        self._quotas = {**self._quotas, key: updated}
+        _bounded_put(self._quotas, key, updated)
         return self.get_quota_status(key)

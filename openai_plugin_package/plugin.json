@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "deckforge-executive-slide-decks",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Turn meeting notes, written memos, spreadsheet tables, and quarterly business metrics into structured 6-slide presentations, 16:9 visual previews, and editable PowerPoint (.pptx) decks.",
   "author": {
     "name": "Kader Mula",
@@ -109,7 +109,7 @@
         "commerce_description": "This plugin does not process in-chat commerce transactions; all MCP tools are read-only."
       },
       "publication": {
-        "release_notes": "Initial 1.0.0 release with 6-slide presentation planning from notes/memos, single-slide layout remixing, 16:9 interactive SVG previews, and editable PowerPoint (.pptx) exports."
+        "release_notes": "Version 1.0.1: Expanded Privacy Policy (/privacy) with complete disclosures covering data collected, current MCP tool inputs and outputs, purposes, recipients/subprocessors, retention, and user controls."
       }
     }
   }
